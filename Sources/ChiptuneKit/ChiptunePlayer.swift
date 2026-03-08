@@ -81,7 +81,7 @@ public class ChiptunePlayer: ObservableObject {
         #if os(iOS)
         do {
             let session = AVAudioSession.sharedInstance()
-            try session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
+            try session.setCategory(.ambient, mode: .default, options: [.mixWithOthers])
             try session.setActive(true)
         } catch {
             print("Failed to setup audio session: \(error)")
