@@ -1,10 +1,10 @@
 # ChiptuneKit
 
-Real-time square wave audio synthesis for retro game sounds.
+Real-time audio synthesis for retro game sounds with configurable waveforms, envelopes, and modulation.
 
 ## Overview
 
-ChiptuneKit provides AVAudioEngine-based square wave synthesis for creating authentic chiptune-style sounds. Perfect for retro games, binary educational apps, or any project that needs that classic 8-bit audio feel.
+ChiptuneKit provides AVAudioEngine-based synthesis for creating authentic chiptune-style sounds. Supports sine, triangle, square, sawtooth, and pulse waveforms with per-note envelope shaping and amplitude modulation (LFO tremolo).
 
 ## Requirements
 
@@ -41,7 +41,7 @@ import ChiptuneKit
 let player = ChiptunePlayer()
 player.start()
 
-// Play a specific note
+// Play a specific note (uses default square wave)
 player.playNote(named: "C4", duration: 0.15)
 
 // Play by frequency
@@ -51,22 +51,63 @@ player.playNote(frequency: 440.0, duration: 0.2)
 player.stop()
 ```
 
+### Custom Tone Settings
+
+Configure waveform, envelope, and modulation per note:
+
+```swift
+// Create a warm sine with gentle attack and tremolo
+let settings = ToneSettings(
+    waveform: .sine,
+    attack: 0.01,
+    release: 0.05,
+    volume: 0.5,
+    duration: 0.15,
+    modulation: .init(enabled: true, rate: 5.0, depth: 0.3)
+)
+
+// Play with custom settings (settings persist for subsequent calls)
+player.playNote(frequency: 440.0, settings: settings)
+
+// Or set settings globally
+player.toneSettings = settings
+player.playNote(named: "E4", duration: 0.1)
+```
+
+### Waveforms
+
+Five waveform types are available:
+
+- **sine** — Pure fundamental tone, warm and clean
+- **triangle** — Mellow, odd harmonics only (softer than square)
+- **square** — Classic chiptune buzz, rich in odd harmonics
+- **sawtooth** — Bright, contains all harmonics
+- **pulse** — Variable duty cycle for thin/nasal tones
+
+```swift
+// Pulse waveform with narrow duty cycle
+let pulseTone = ToneSettings(waveform: .pulse, dutyCycle: 0.25)
+player.playNote(frequency: 440.0, settings: pulseTone)
+```
+
 ### Bit Position Mapping (for binary games)
 
 Map bit positions to musical notes using a pentatonic scale:
 
 ```swift
 // Higher bit positions = higher notes
-player.playNoteForBit(position: 0, activeBitCount: 8)   // Low note
-player.playNoteForBit(position: 7, activeBitCount: 8)   // High note
+player.playNoteForBit(position: 0, activeBitCount: 8)   // Low note (C4)
+player.playNoteForBit(position: 7, activeBitCount: 8)   // High note (E5)
+
+// Get frequency for a position
+let freq = ChiptunePlayer.pentatonicFrequency(forPosition: 3)  // G4
 ```
 
-### Victory Melody
+### Victory Melody (Legacy)
 
 Play the built-in Ode to Joy melody for victory sequences:
 
 ```swift
-// Play melody notes in sequence
 for i in 0..<16 {
     player.playVictoryNote(noteIndex: i, duration: 0.18)
     try? await Task.sleep(nanoseconds: 200_000_000)
@@ -76,7 +117,7 @@ for i in 0..<16 {
 ### Volume Control
 
 ```swift
-player.volume = 0.5  // 0.0 to 1.0
+player.volume = 0.5  // 0.0 to 1.0 (convenience for toneSettings.volume)
 ```
 
 ### SwiftUI Integration
@@ -97,8 +138,6 @@ struct GameView: View {
 
 ## Available Notes
 
-The following notes are available in the `noteFrequencies` dictionary:
-
 | Note | Frequency (Hz) |
 |------|----------------|
 | C4 | 261.63 |
@@ -114,35 +153,60 @@ The following notes are available in the `noteFrequencies` dictionary:
 | F5 | 698.46 |
 | G5 | 783.99 |
 
+## Pentatonic Scale (Bit Position Mapping)
+
+| Position | Note | Frequency (Hz) |
+|----------|------|----------------|
+| 0 | C4 | 261.63 |
+| 1 | D4 | 293.66 |
+| 2 | E4 | 329.63 |
+| 3 | G4 | 392.00 |
+| 4 | A4 | 440.00 |
+| 5 | C5 | 523.25 |
+| 6 | D5 | 587.33 |
+| 7 | E5 | 659.25 |
+| 8 | G5 | 783.99 |
+| 9 | A5 | 880.00 |
+
+Positions 10-15 wrap back to the beginning.
+
 ## API Reference
+
+### ToneSettings
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `waveform` | `Waveform` | `.square` | Oscillator shape |
+| `dutyCycle` | `Double` | `0.5` | Pulse width (pulse only) |
+| `attack` | `Double` | `0` | Attack time (seconds) |
+| `release` | `Double` | `0` | Release time (seconds) |
+| `volume` | `Float` | `0.3` | Output volume (0-1) |
+| `duration` | `Double` | `0.15` | Note duration (seconds) |
+| `tempo` | `Double` | `200` | BPM (caller scheduling) |
+| `filter` | `FilterSettings` | disabled | Low-pass filter (v2) |
+| `modulation` | `ModulationSettings` | disabled | LFO tremolo |
 
 ### ChiptunePlayer
 
-| Property/Method | Description |
-|-----------------|-------------|
-| `volume: Float` | Volume level (0.0-1.0, default: 0.3) |
+| Method | Description |
+|--------|-------------|
 | `start()` | Start the audio engine |
 | `stop()` | Stop the audio engine |
-| `playNote(frequency:duration:)` | Play note at specific frequency |
+| `playNote(frequency:duration:)` | Play at frequency with current settings |
+| `playNote(frequency:settings:)` | Play with specific tone settings |
 | `playNote(named:duration:)` | Play note by name (e.g., "C4") |
-| `playNoteForBit(position:activeBitCount:duration:)` | Play note mapped to bit position |
-| `playVictoryNote(noteIndex:duration:)` | Play victory melody note |
-| `getVictoryNoteFrequency(noteIndex:)` | Get frequency for victory note |
-
-### Static Properties
-
-| Property | Description |
-|----------|-------------|
-| `noteFrequencies` | Dictionary mapping note names to frequencies |
-| `odeToJoyNotes` | Array of note names for victory melody |
+| `playNoteForBit(position:activeBitCount:duration:)` | Pentatonic note for bit position |
+| `pentatonicFrequency(forPosition:)` | Get frequency for bit position (static) |
+| `playVictoryNote(noteIndex:duration:)` | Play legacy Ode to Joy note |
 
 ## Audio Session
 
-On iOS, ChiptuneKit configures the audio session for `.playback` category with `.mixWithOthers` option, allowing sounds to play alongside other audio.
+On iOS, ChiptuneKit configures the audio session for `.ambient` category with `.mixWithOthers` option, allowing sounds to play alongside other audio.
 
 ## Performance Notes
 
 - The audio engine runs on a high-priority audio thread
+- Waveform generation, envelope, and LFO are computed per-frame in the render callback (no allocations)
 - Call `start()` once when your view appears, not on every sound
 - Call `stop()` when audio is no longer needed to free resources
 

@@ -2,7 +2,8 @@
 //  ChiptunePlayer.swift
 //  ChiptuneKit
 //
-//  Generates chiptune-style square wave sounds using AVAudioEngine.
+//  Generates chiptune-style sounds using AVAudioEngine with configurable
+//  waveforms, envelopes, and amplitude modulation.
 //
 //  Created by Claude Code on 12/23/24.
 //
@@ -11,7 +12,10 @@ import AVFoundation
 import Combine
 import Foundation
 
-/// Generates chiptune-style square wave sounds using AVAudioEngine.
+/// Generates chiptune-style sounds using AVAudioEngine.
+///
+/// Supports multiple waveform types (sine, triangle, square, sawtooth, pulse),
+/// per-note envelope shaping (attack/release), and amplitude modulation (LFO).
 ///
 /// ## Example Usage
 ///
@@ -19,14 +23,15 @@ import Foundation
 /// let player = ChiptunePlayer()
 /// player.start()
 ///
-/// // Play a specific note
+/// // Play with default square wave
 /// player.playNote(named: "C4", duration: 0.1)
+///
+/// // Play with custom tone settings
+/// var settings = ToneSettings(waveform: .sine, attack: 0.01, release: 0.05)
+/// player.playNote(frequency: 440.0, settings: settings)
 ///
 /// // Play based on bit position (for binary games)
 /// player.playNoteForBit(position: 7, activeBitCount: 8)
-///
-/// // Play victory melody note
-/// player.playVictoryNote(noteIndex: 0)
 ///
 /// player.stop()
 /// ```
@@ -42,12 +47,29 @@ public class ChiptunePlayer: ObservableObject {
     private var isPlaying: Bool = false
     private let sampleRate: Double = 44100
 
-    /// Volume control (0.0 to 1.0)
-    public var volume: Float = 0.3
+    // MARK: - Envelope & Modulation Frame Tracking
+
+    /// Frame index within the current note (reset on each playNote call).
+    private var noteFrameIndex: Int = 0
+
+    /// Total frames for the current note's duration.
+    private var noteTotalFrames: Int = 0
+
+    // MARK: - Tone Settings
+
+    /// Active tone settings applied to the render callback.
+    /// Change this before calling `playNote` or use `playNote(frequency:settings:)`.
+    public var toneSettings: ToneSettings = .default
+
+    /// Volume control (0.0 to 1.0). Convenience accessor for `toneSettings.volume`.
+    public var volume: Float {
+        get { toneSettings.volume }
+        set { toneSettings.volume = newValue }
+    }
 
     /// Note frequencies for musical scales (in Hz).
     /// Using octave 4-5 range for pleasant chiptune sound.
-    public static let noteFrequencies: [String: Double] = [
+    nonisolated public static let noteFrequencies: [String: Double] = [
         "C4": 261.63,
         "D4": 293.66,
         "E4": 329.63,
@@ -62,9 +84,16 @@ public class ChiptunePlayer: ObservableObject {
         "G5": 783.99
     ]
 
-    /// Ode to Joy melody notes for victory sequences.
+    /// Pentatonic scale frequencies for bit-position mapping.
+    /// Two octaves of C, D, E, G, A — no dissonant intervals.
+    nonisolated public static let pentatonicFrequencies: [Double] = [
+        261.63, 293.66, 329.63, 392.00, 440.00,  // C4, D4, E4, G4, A4
+        523.25, 587.33, 659.25, 783.99, 880.00    // C5, D5, E5, G5, A5
+    ]
+
+    /// Ode to Joy melody notes for victory sequences (legacy).
     /// The melody: E E F G | G F E D | C C D E | E D D
-    public static let odeToJoyNotes: [String] = [
+    nonisolated public static let odeToJoyNotes: [String] = [
         "E4", "E4", "F4", "G4",  // First phrase
         "G4", "F4", "E4", "D4",  // Second phrase
         "C4", "C4", "D4", "E4",  // Third phrase
@@ -89,6 +118,82 @@ public class ChiptunePlayer: ObservableObject {
         #endif
     }
 
+    // MARK: - Waveform Generation
+
+    /// Generate a single sample for the given waveform at the current phase.
+    ///
+    /// Phase is normalized to [0, 1) representing one cycle of the waveform.
+    /// - Parameters:
+    ///   - phase: Normalized phase position (0.0 to 1.0)
+    ///   - waveform: The waveform shape to generate
+    ///   - dutyCycle: Duty cycle for pulse waveform (ignored for others)
+    /// - Returns: Sample value in [-1.0, 1.0]
+    nonisolated private func generateSample(phase: Double, waveform: ToneSettings.Waveform, dutyCycle: Double) -> Float {
+        switch waveform {
+        case .sine:
+            return Float(sin(2.0 * .pi * phase))
+        case .triangle:
+            return Float(4.0 * abs(phase - 0.5) - 1.0)
+        case .square:
+            return phase < 0.5 ? 1.0 : -1.0
+        case .sawtooth:
+            return Float(2.0 * phase - 1.0)
+        case .pulse:
+            return phase < dutyCycle ? 1.0 : -1.0
+        }
+    }
+
+    // MARK: - Envelope
+
+    /// Calculate envelope amplitude for the current frame position.
+    ///
+    /// Linear attack ramp from 0→1, sustain at 1, linear release ramp from 1→0.
+    /// - Parameters:
+    ///   - framesElapsed: Frames since note start
+    ///   - totalFrames: Total frames for the note duration
+    ///   - attackFrames: Number of frames for attack ramp
+    ///   - releaseFrames: Number of frames for release ramp
+    /// - Returns: Envelope amplitude (0.0 to 1.0)
+    nonisolated private func envelopeAmplitude(framesElapsed: Int, totalFrames: Int, attackFrames: Int, releaseFrames: Int) -> Float {
+        guard totalFrames > 0 else { return 0 }
+
+        // Attack phase
+        if framesElapsed < attackFrames && attackFrames > 0 {
+            return Float(framesElapsed) / Float(attackFrames)
+        }
+
+        // Release phase
+        let releaseStart = totalFrames - releaseFrames
+        if framesElapsed >= releaseStart && releaseFrames > 0 {
+            let releaseElapsed = framesElapsed - releaseStart
+            return max(0, 1.0 - Float(releaseElapsed) / Float(releaseFrames))
+        }
+
+        // Sustain phase
+        return 1.0
+    }
+
+    // MARK: - LFO Modulation
+
+    /// Calculate LFO amplitude modulation value.
+    ///
+    /// Produces a tremolo effect by modulating volume with a sine wave.
+    /// - Parameters:
+    ///   - framesElapsed: Frames since note start
+    ///   - sampleRate: Audio sample rate
+    ///   - rate: LFO frequency in Hz
+    ///   - depth: Modulation depth (0.0 = no effect, 1.0 = full effect)
+    /// - Returns: Amplitude multiplier (ranges from (1-depth) to 1.0)
+    nonisolated private func lfoValue(framesElapsed: Int, sampleRate: Double, rate: Double, depth: Double) -> Float {
+        guard depth > 0 && rate > 0 else { return 1.0 }
+        let lfoPhase = Double(framesElapsed) / sampleRate * rate
+        let lfo = sin(2.0 * .pi * lfoPhase)
+        // Map sine [-1,1] to amplitude range [(1-depth), 1.0]
+        return Float(1.0 - depth * 0.5 * (1.0 - lfo))
+    }
+
+    // MARK: - Audio Engine Setup
+
     private func setupSourceNode() {
         let format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 1)!
 
@@ -99,18 +204,58 @@ public class ChiptunePlayer: ObservableObject {
             let buffer = ablPointer[0]
             let ptr = buffer.mData?.assumingMemoryBound(to: Float.self)
 
+            // Snapshot settings for this render pass (avoid repeated property access)
+            let playing = self.isPlaying
+            let freq = self.currentFrequency
+            let settings = self.toneSettings
+            let sr = self.sampleRate
+            let totalFrames = self.noteTotalFrames
+            let attackFrames = Int(settings.attack * sr)
+            let releaseFrames = Int(settings.release * sr)
+
             for frame in 0..<Int(frameCount) {
-                if self.isPlaying && self.currentFrequency > 0 {
-                    // Generate square wave
-                    let phaseIncrement = self.currentFrequency / self.sampleRate
+                if playing && freq > 0 {
+                    let frameIndex = self.noteFrameIndex
+
+                    // Stop if we've exceeded the note duration
+                    guard frameIndex < totalFrames else {
+                        ptr?[frame] = 0
+                        self.isPlaying = false
+                        continue
+                    }
+
+                    // Phase accumulation
+                    let phaseIncrement = freq / sr
                     self.currentPhase += phaseIncrement
                     if self.currentPhase > 1.0 {
                         self.currentPhase -= 1.0
                     }
 
-                    // Square wave: high for first half, low for second half
-                    let squareValue: Float = self.currentPhase < 0.5 ? 1.0 : -1.0
-                    ptr?[frame] = squareValue * self.volume
+                    // Waveform
+                    let sample = self.generateSample(
+                        phase: self.currentPhase,
+                        waveform: settings.waveform,
+                        dutyCycle: settings.dutyCycle
+                    )
+
+                    // Envelope
+                    let envelope = self.envelopeAmplitude(
+                        framesElapsed: frameIndex,
+                        totalFrames: totalFrames,
+                        attackFrames: attackFrames,
+                        releaseFrames: releaseFrames
+                    )
+
+                    // LFO modulation
+                    let lfo = self.lfoValue(
+                        framesElapsed: frameIndex,
+                        sampleRate: sr,
+                        rate: settings.modulation.rate,
+                        depth: settings.modulation.enabled ? settings.modulation.depth : 0
+                    )
+
+                    ptr?[frame] = sample * settings.volume * envelope * lfo
+                    self.noteFrameIndex += 1
                 } else {
                     ptr?[frame] = 0
                 }
@@ -122,6 +267,8 @@ public class ChiptunePlayer: ObservableObject {
         audioEngine.attach(sourceNode!)
         audioEngine.connect(sourceNode!, to: audioEngine.mainMixerNode, format: format)
     }
+
+    // MARK: - Public API
 
     /// Start the audio engine.
     ///
@@ -151,7 +298,7 @@ public class ChiptunePlayer: ObservableObject {
         }
     }
 
-    /// Play a note at the given frequency for a duration.
+    /// Play a note at the given frequency for a duration using current tone settings.
     ///
     /// - Parameters:
     ///   - frequency: The frequency in Hz
@@ -159,12 +306,22 @@ public class ChiptunePlayer: ObservableObject {
     public func playNote(frequency: Double, duration: Double) {
         currentFrequency = frequency
         currentPhase = 0
+        noteFrameIndex = 0
+        noteTotalFrames = Int(duration * sampleRate)
         isPlaying = true
+    }
 
-        // Stop the note after duration
-        DispatchQueue.main.asyncAfter(deadline: .now() + duration * 0.9) { [weak self] in
-            self?.isPlaying = false
-        }
+    /// Play a note at the given frequency using specific tone settings.
+    ///
+    /// Applies the settings before playing. The settings persist for subsequent
+    /// calls to `playNote(frequency:duration:)`.
+    ///
+    /// - Parameters:
+    ///   - frequency: The frequency in Hz
+    ///   - settings: Tone settings to apply
+    public func playNote(frequency: Double, settings: ToneSettings) {
+        toneSettings = settings
+        playNote(frequency: frequency, duration: settings.duration)
     }
 
     /// Play a named note (e.g., "C4", "E4").
@@ -187,20 +344,21 @@ public class ChiptunePlayer: ObservableObject {
     ///   - activeBitCount: Total number of active bits (for scaling)
     ///   - duration: How long to play in seconds (default: 0.15)
     public func playNoteForBit(position: Int, activeBitCount: Int, duration: Double = 0.15) {
-        // Pentatonic scale for pleasant sound: C, D, E, G, A
-        let pentatonicFrequencies: [Double] = [
-            261.63, 293.66, 329.63, 392.00, 440.00,  // C4, D4, E4, G4, A4
-            523.25, 587.33, 659.25, 783.99, 880.00   // C5, D5, E5, G5, A5
-        ]
-
-        // Scale position to available notes
-        let noteIndex = min(position % pentatonicFrequencies.count, pentatonicFrequencies.count - 1)
-        let frequency = pentatonicFrequencies[noteIndex]
-
+        let noteIndex = position % ChiptunePlayer.pentatonicFrequencies.count
+        let frequency = ChiptunePlayer.pentatonicFrequencies[noteIndex]
         playNote(frequency: frequency, duration: duration)
     }
 
-    /// Play a victory melody note by index.
+    /// Get the pentatonic frequency for a bit position.
+    ///
+    /// - Parameter position: The bit position (0-15, wraps around)
+    /// - Returns: The frequency in Hz
+    nonisolated public static func pentatonicFrequency(forPosition position: Int) -> Double {
+        let index = position % pentatonicFrequencies.count
+        return pentatonicFrequencies[index]
+    }
+
+    /// Play a victory melody note by index (legacy Ode to Joy).
     ///
     /// Uses the Ode to Joy melody. Call repeatedly with incrementing indices
     /// to play the full melody.
