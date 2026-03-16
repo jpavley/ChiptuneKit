@@ -42,6 +42,7 @@ public class ChiptunePlayer: ObservableObject {
 
     private var audioEngine: AVAudioEngine
     private var sourceNode: AVAudioSourceNode?
+    private var routeChangeObserver: NSObjectProtocol?
     private var currentPhase: Double = 0
     private var currentFrequency: Double = 0
     private var isPlaying: Bool = false
@@ -114,6 +115,34 @@ public class ChiptunePlayer: ObservableObject {
             try session.setActive(true)
         } catch {
             print("Failed to setup audio session: \(error)")
+        }
+
+        // Restart engine on route changes (e.g., AirPods connect/disconnect).
+        // AVAudioEngine pauses when the route changes; restarting re-establishes
+        // the audio graph with the new output device.
+        routeChangeObserver = NotificationCenter.default.addObserver(
+            forName: AVAudioSession.routeChangeNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.handleRouteChange()
+            }
+        }
+        #endif
+    }
+
+    private func handleRouteChange() {
+        #if os(iOS)
+        // Only restart if the engine was previously started
+        guard sourceNode != nil else { return }
+        do {
+            try AVAudioSession.sharedInstance().setActive(true)
+            if !audioEngine.isRunning {
+                try audioEngine.start()
+            }
+        } catch {
+            print("Failed to restart audio engine after route change: \(error)")
         }
         #endif
     }
@@ -295,6 +324,16 @@ public class ChiptunePlayer: ObservableObject {
         if let node = sourceNode {
             audioEngine.detach(node)
             sourceNode = nil
+        }
+        if let observer = routeChangeObserver {
+            NotificationCenter.default.removeObserver(observer)
+            routeChangeObserver = nil
+        }
+    }
+
+    deinit {
+        if let observer = routeChangeObserver {
+            NotificationCenter.default.removeObserver(observer)
         }
     }
 
