@@ -62,6 +62,46 @@ public struct ToneSettings: Sendable {
         }
     }
 
+    /// Rhythmic pattern configuration for note duration variation.
+    ///
+    /// Patterns are arrays of beat markers where `1` = short (1x duration)
+    /// and values > 1 = long (uses `multiplier`). Patterns repeat every
+    /// `pattern.count` notes. Use multiples of 4 for standard measures.
+    ///
+    /// ## Example
+    ///
+    /// ```swift
+    /// // "Da Da Daa Da | Daa Daa Da Da" — two-measure pattern
+    /// var rhythm = RhythmSettings(
+    ///     enabled: true,
+    ///     pattern: [1, 1, 2, 1, 2, 2, 1, 1],
+    ///     multiplier: 2.0
+    /// )
+    /// let m = rhythm.multiplier(forNoteAt: 2) // 2.0 (long)
+    /// ```
+    public struct RhythmSettings: Sendable {
+        public var enabled: Bool
+        public var pattern: [Double]    // beat markers: 1 = short, >1 = long sentinel
+        public var multiplier: Double   // actual duration factor for long notes (1.5–4.0)
+
+        public init(enabled: Bool = false, pattern: [Double] = [1, 1, 2, 1], multiplier: Double = 2.0) {
+            self.enabled = enabled
+            self.pattern = pattern
+            self.multiplier = multiplier
+        }
+
+        /// Returns the duration multiplier for the note at the given index.
+        ///
+        /// When rhythm is disabled or the pattern is empty, returns `1.0`.
+        /// Otherwise cycles through the pattern, returning `1.0` for short
+        /// beats and `multiplier` for long beats.
+        public func multiplier(forNoteAt index: Int) -> Double {
+            guard enabled, !pattern.isEmpty else { return 1.0 }
+            let raw = pattern[index % pattern.count]
+            return raw <= 1.0 ? 1.0 : multiplier
+        }
+    }
+
     // MARK: - Properties
 
     /// Oscillator waveform shape.
@@ -91,6 +131,9 @@ public struct ToneSettings: Sendable {
     /// Amplitude modulation settings.
     public var modulation: ModulationSettings
 
+    /// Rhythmic pattern settings for note duration variation.
+    public var rhythm: RhythmSettings
+
     // MARK: - Initialization
 
     public init(
@@ -102,7 +145,8 @@ public struct ToneSettings: Sendable {
         duration: Double = 0.15,
         tempo: Double = 200,
         filter: FilterSettings = FilterSettings(),
-        modulation: ModulationSettings = ModulationSettings()
+        modulation: ModulationSettings = ModulationSettings(),
+        rhythm: RhythmSettings = RhythmSettings()
     ) {
         self.waveform = waveform
         self.dutyCycle = dutyCycle
@@ -113,6 +157,7 @@ public struct ToneSettings: Sendable {
         self.tempo = tempo
         self.filter = filter
         self.modulation = modulation
+        self.rhythm = rhythm
     }
 
     // MARK: - Presets

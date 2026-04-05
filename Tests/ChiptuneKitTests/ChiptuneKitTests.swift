@@ -115,6 +115,76 @@ final class ChiptuneKitTests: XCTestCase {
         XCTAssertEqual(mod.depth, 0, accuracy: 0.001)
     }
 
+    // MARK: - RhythmSettings Tests
+
+    func testRhythmSettingsDefaults() {
+        let rhythm = ToneSettings.RhythmSettings()
+        XCTAssertFalse(rhythm.enabled)
+        XCTAssertEqual(rhythm.pattern, [1, 1, 2, 1])
+        XCTAssertEqual(rhythm.multiplier, 2.0, accuracy: 0.001)
+    }
+
+    func testRhythmMultiplierWhenDisabled() {
+        let rhythm = ToneSettings.RhythmSettings(enabled: false, pattern: [1, 1, 2, 1], multiplier: 2.0)
+        XCTAssertEqual(rhythm.multiplier(forNoteAt: 0), 1.0)
+        XCTAssertEqual(rhythm.multiplier(forNoteAt: 2), 1.0)
+    }
+
+    func testRhythmMultiplierWhenEnabled() {
+        let rhythm = ToneSettings.RhythmSettings(enabled: true, pattern: [1, 1, 2, 1], multiplier: 2.0)
+        XCTAssertEqual(rhythm.multiplier(forNoteAt: 0), 1.0)  // short
+        XCTAssertEqual(rhythm.multiplier(forNoteAt: 1), 1.0)  // short
+        XCTAssertEqual(rhythm.multiplier(forNoteAt: 2), 2.0)  // long
+        XCTAssertEqual(rhythm.multiplier(forNoteAt: 3), 1.0)  // short
+    }
+
+    func testRhythmPatternWraps() {
+        let rhythm = ToneSettings.RhythmSettings(enabled: true, pattern: [1, 1, 2, 1], multiplier: 3.0)
+        // Index 4 wraps to pattern[0] = 1 → short
+        XCTAssertEqual(rhythm.multiplier(forNoteAt: 4), 1.0)
+        // Index 6 wraps to pattern[2] = 2 → long
+        XCTAssertEqual(rhythm.multiplier(forNoteAt: 6), 3.0)
+        // Index 10 wraps to pattern[2] = 2 → long
+        XCTAssertEqual(rhythm.multiplier(forNoteAt: 10), 3.0)
+    }
+
+    func testRhythmEmptyPatternReturnsOne() {
+        let rhythm = ToneSettings.RhythmSettings(enabled: true, pattern: [], multiplier: 2.0)
+        XCTAssertEqual(rhythm.multiplier(forNoteAt: 0), 1.0)
+        XCTAssertEqual(rhythm.multiplier(forNoteAt: 5), 1.0)
+    }
+
+    func testRhythmMultiMeasurePattern() {
+        // | Da Da Daa Da | Daa Daa Da Da |
+        let rhythm = ToneSettings.RhythmSettings(enabled: true, pattern: [1, 1, 2, 1, 2, 2, 1, 1], multiplier: 2.0)
+        // First measure
+        XCTAssertEqual(rhythm.multiplier(forNoteAt: 0), 1.0)
+        XCTAssertEqual(rhythm.multiplier(forNoteAt: 1), 1.0)
+        XCTAssertEqual(rhythm.multiplier(forNoteAt: 2), 2.0)
+        XCTAssertEqual(rhythm.multiplier(forNoteAt: 3), 1.0)
+        // Second measure
+        XCTAssertEqual(rhythm.multiplier(forNoteAt: 4), 2.0)
+        XCTAssertEqual(rhythm.multiplier(forNoteAt: 5), 2.0)
+        XCTAssertEqual(rhythm.multiplier(forNoteAt: 6), 1.0)
+        XCTAssertEqual(rhythm.multiplier(forNoteAt: 7), 1.0)
+    }
+
+    func testToneSettingsRhythmDefaults() {
+        let settings = ToneSettings.default
+        XCTAssertFalse(settings.rhythm.enabled)
+        XCTAssertEqual(settings.rhythm.pattern, [1, 1, 2, 1])
+        XCTAssertEqual(settings.rhythm.multiplier, 2.0, accuracy: 0.001)
+    }
+
+    func testToneSettingsCustomRhythm() {
+        let settings = ToneSettings(
+            rhythm: .init(enabled: true, pattern: [2, 1, 1, 1], multiplier: 1.5)
+        )
+        XCTAssertTrue(settings.rhythm.enabled)
+        XCTAssertEqual(settings.rhythm.multiplier(forNoteAt: 0), 1.5)
+        XCTAssertEqual(settings.rhythm.multiplier(forNoteAt: 1), 1.0)
+    }
+
     // MARK: - Player Tests
 
     @MainActor
