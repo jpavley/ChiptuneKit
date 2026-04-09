@@ -302,9 +302,37 @@ public class ChiptunePlayer: ObservableObject {
     /// Start the audio engine.
     ///
     /// Call this before playing any notes. The engine will remain running
-    /// until `stop()` is called.
+    /// until `stop()` is called. Safe to call after a prior `stop()` —
+    /// re-activates the audio session and re-installs the route-change
+    /// observer if they were torn down.
     public func start() {
         guard !audioEngine.isRunning else { return }
+
+        // Re-activate the audio session if a prior stop() deactivated it.
+        // On the very first call (directly after init()) the session is
+        // already active from setupAudioSession(), so this is a no-op.
+        // Matching setActive(false) lives in stop() for symmetry.
+        #if os(iOS)
+        do {
+            try AVAudioSession.sharedInstance().setActive(true)
+        } catch {
+            print("Failed to activate audio session: \(error)")
+        }
+        // Re-install the route-change observer if a prior stop() removed it.
+        // This prevents a latent bug where stop-then-start would lose route
+        // change handling (AirPods connect/disconnect, speaker swap, etc.).
+        if routeChangeObserver == nil {
+            routeChangeObserver = NotificationCenter.default.addObserver(
+                forName: AVAudioSession.routeChangeNotification,
+                object: nil,
+                queue: .main
+            ) { [weak self] _ in
+                Task { @MainActor in
+                    self?.handleRouteChange()
+                }
+            }
+        }
+        #endif
 
         setupSourceNode()
 
@@ -318,6 +346,11 @@ public class ChiptunePlayer: ObservableObject {
     /// Stop the audio engine.
     ///
     /// Call this when audio is no longer needed to free resources.
+    /// Also deactivates the shared AVAudioSession with
+    /// `.notifyOthersOnDeactivation` so that other apps (Music, podcasts,
+    /// etc.) can resume playback. Hosts should call this on
+    /// `scenePhase == .background` or `onDisappear` — otherwise the audio
+    /// hardware stays awake and backgrounded audio apps can't resume.
     public func stop() {
         isPlaying = false
         audioEngine.stop()
@@ -329,6 +362,19 @@ public class ChiptunePlayer: ObservableObject {
             NotificationCenter.default.removeObserver(observer)
             routeChangeObserver = nil
         }
+
+        // Deactivate the shared audio session. Apple's guidance is to pass
+        // .notifyOthersOnDeactivation so observers (Music app and friends)
+        // receive the signal and can resume their own playback. Without
+        // this, BQ16 (and any other host of ChiptunePlayer) would leave the
+        // audio hardware awake and prevent other audio apps from resuming.
+        #if os(iOS)
+        do {
+            try AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        } catch {
+            print("Failed to deactivate audio session: \(error)")
+        }
+        #endif
     }
 
     deinit {
