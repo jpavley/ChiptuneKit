@@ -26,7 +26,7 @@ Or add it to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/jpavley/ChiptuneKit.git", branch: "main")
+    .package(url: "https://github.com/jpavley/ChiptuneKit.git", from: "1.0.0")
 ]
 ```
 
