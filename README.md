@@ -2,6 +2,10 @@
 
 Real-time audio synthesis for retro game sounds with configurable waveforms, envelopes, and modulation.
 
+**Live demo:** <https://jpavley.github.io/ChiptuneKit/>
+
+A browser-based playground for designing chiptune `ToneSettings` interactively — pick a waveform, shape its envelope and modulation, sketch rhythm patterns, audition presets, and render the result to a downloadable WAV. Runs entirely on the Web Audio API; nothing to install.
+
 ## Overview
 
 ChiptuneKit provides AVAudioEngine-based synthesis for creating authentic chiptune-style sounds. Supports sine, triangle, square, sawtooth, and pulse waveforms with per-note envelope shaping and amplitude modulation (LFO tremolo).
