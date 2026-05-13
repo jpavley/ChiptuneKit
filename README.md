@@ -19,14 +19,14 @@ ChiptuneKit provides AVAudioEngine-based synthesis for creating authentic chiptu
 Add ChiptuneKit to your project using Xcode:
 
 1. File > Add Package Dependencies...
-2. Enter the repository URL or local path
+2. Enter `https://github.com/jpavley/ChiptuneKit.git`
 3. Select the version/branch you want to use
 
 Or add it to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(path: "../ChiptuneKit")
+    .package(url: "https://github.com/jpavley/ChiptuneKit.git", branch: "main")
 ]
 ```
 
