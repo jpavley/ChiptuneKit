@@ -1,0 +1,2538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChiptuneKit Playground</title>
+    <style>
+        /* ── Reset & Variables ───────────────────────────────── */
+        /* Nibble Color Theme from BQ16 Asset Catalog            */
+        /* Accent:  #FF7B00  Primary: #FFC48E                    */
+        /* Secondary: #6898CC  Background: #002E5C                */
+
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            /* Nibble theme palette */
+            --bg-dark: #002E5C;
+            --bg-panel: #00264D;
+            --bg-panel-alt: #003366;
+            --bg-input: #003D75;
+            --bg-hover: #004D94;
+            --border: #1A6099;
+            --border-light: #2A70A9;
+            --text: #FFC48E;
+            --text-dim: #6898CC;
+            --text-muted: #6898CC;
+            --accent: #FF7B00;
+            --accent-dim: #CC6200;
+            --accent-glow: #FF7B0040;
+            --green: #40C060;
+            --red: #FF5050;
+            --blue: #6898CC;
+            --canvas-bg: #001A36;
+            --canvas-grid: #003060;
+            --canvas-wave: #FF7B00;
+            --canvas-env: #FFC48E;
+            --preset-active: #FF7B0025;
+            --slider-track: #003D75;
+            --slider-fill: #FF7B00;
+            --btn-bg: #003D75;
+            --btn-hover: #004D94;
+            --btn-active: #FF7B00;
+            --btn-active-text: #002E5C;
+            --note-btn: #003366;
+            --note-btn-hover: #004080;
+            --note-btn-active: #FF7B00;
+            --note-black: #003366;
+            --note-black-hover: #004080;
+
+            /* Uniform font size */
+            --fs: 14px;
+        }
+
+        body {
+            font-family: 'SF Mono', 'Menlo', 'Consolas', monospace;
+            background: var(--bg-dark);
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* ── Header ──────────────────────────────────────────── */
+
+        header {
+            background: var(--bg-panel);
+            border-bottom: 1px solid var(--border);
+            padding: 12px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        header h1 {
+            font-size: var(--fs);
+            font-weight: 600;
+            color: var(--accent);
+            letter-spacing: 1px;
+        }
+
+        header .subtitle {
+            font-size: var(--fs);
+            color: var(--text-dim);
+        }
+
+        /* ── Layout ──────────────────────────────────────────── */
+
+        .layout {
+            display: grid;
+            grid-template-columns: 190px 1fr 1fr;
+            gap: 0;
+            min-height: calc(100vh - 48px);
+        }
+
+        /* ── Presets Sidebar ─────────────────────────────────── */
+
+        .presets-panel {
+            background: var(--bg-panel);
+            border-right: 1px solid var(--border);
+            padding: 16px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .presets-panel h2 {
+            font-size: var(--fs);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--text-dim);
+            margin-bottom: 8px;
+        }
+
+        .preset-btn {
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 8px 10px;
+            cursor: pointer;
+            text-align: left;
+            transition: all 0.15s;
+        }
+
+        .preset-btn:hover {
+            background: var(--bg-hover);
+            border-color: var(--border-light);
+        }
+
+        .preset-btn.active {
+            background: var(--preset-active);
+            border-color: var(--accent-dim);
+        }
+
+        .preset-btn .preset-name {
+            font-size: var(--fs);
+            font-weight: 600;
+            color: var(--text);
+            display: block;
+        }
+
+        .preset-btn.active .preset-name {
+            color: var(--accent);
+        }
+
+        .preset-btn .preset-desc {
+            font-size: var(--fs);
+            color: var(--text-muted);
+            display: block;
+            margin-top: 2px;
+        }
+
+        /* ── Controls Panel ──────────────────────────────────── */
+
+        .controls-panel {
+            background: var(--bg-dark);
+            padding: 20px 24px;
+            overflow-y: auto;
+        }
+
+        .section {
+            margin-bottom: 24px;
+        }
+
+        .section-title {
+            font-size: var(--fs);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--accent);
+            margin-bottom: 12px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        /* Waveform selector buttons */
+        .waveform-selector {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 16px;
+        }
+
+        .wave-btn {
+            flex: 1;
+            padding: 8px 4px;
+            background: var(--btn-bg);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--text-dim);
+            font-family: inherit;
+            font-size: var(--fs);
+            font-weight: 600;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.15s;
+        }
+
+        .wave-btn:hover {
+            background: var(--btn-hover);
+            color: var(--text);
+        }
+
+        .wave-btn.active {
+            background: var(--btn-active);
+            color: var(--btn-active-text);
+            border-color: var(--accent);
+        }
+
+        /* Slider rows */
+        .slider-row {
+            margin-bottom: 14px;
+        }
+
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 4px;
+        }
+
+        .slider-label span:first-child {
+            font-size: var(--fs);
+            color: var(--text);
+        }
+
+        .slider-value {
+            font-size: var(--fs);
+            color: var(--accent);
+            font-weight: 600;
+            min-width: 50px;
+            text-align: right;
+        }
+
+        .slider-label .reset-btn {
+            font-size: var(--fs);
+            color: var(--text-muted);
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0 4px;
+            font-family: inherit;
+        }
+
+        .slider-label .reset-btn:hover {
+            color: var(--accent);
+        }
+
+        .slider-label .reset-btn.changed {
+            color: var(--accent-dim);
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 6px;
+            background: var(--slider-track);
+            border-radius: 3px;
+            outline: none;
+            cursor: pointer;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--slider-fill);
+            cursor: pointer;
+            border: 2px solid var(--bg-dark);
+            box-shadow: 0 0 4px var(--accent-glow);
+        }
+
+        input[type="range"]:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        input[type="range"]:disabled::-webkit-slider-thumb {
+            cursor: not-allowed;
+        }
+
+        /* Toggle switch */
+        .toggle-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+
+        .toggle-row label {
+            font-size: var(--fs);
+            color: var(--text);
+        }
+
+        .toggle {
+            position: relative;
+            width: 36px;
+            height: 20px;
+            cursor: pointer;
+        }
+
+        .toggle input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-track {
+            position: absolute;
+            inset: 0;
+            background: var(--bg-input);
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            transition: background 0.2s;
+        }
+
+        .toggle input:checked + .toggle-track {
+            background: var(--accent);
+            border-color: var(--accent);
+        }
+
+        .toggle-knob {
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 14px;
+            height: 14px;
+            background: var(--text);
+            border-radius: 50%;
+            transition: transform 0.2s;
+            pointer-events: none;
+        }
+
+        .toggle input:checked ~ .toggle-knob {
+            transform: translateX(16px);
+        }
+
+        /* Rhythm pattern */
+        .rhythm-beats {
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+            margin: 8px 0;
+        }
+        .rhythm-beat {
+            width: 32px;
+            height: 32px;
+            border: 1px solid #555;
+            border-radius: 4px;
+            background: #1a1a2e;
+            color: #8888aa;
+            font: bold 11px monospace;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s;
+        }
+        .rhythm-beat.long {
+            background: #2a1a3e;
+            border-color: #9b59b6;
+            color: #c39bd3;
+        }
+        .rhythm-beat.measure-start {
+            margin-left: 8px;
+        }
+        .rhythm-beat:first-child {
+            margin-left: 0;
+        }
+        .rhythm-label {
+            font: 12px monospace;
+            color: #8888aa;
+            margin: 4px 0 8px;
+            letter-spacing: 1px;
+        }
+        .rhythm-measures {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+        .rhythm-measures button {
+            flex: 1;
+            padding: 4px 8px;
+            background: #1a1a2e;
+            border: 1px solid #555;
+            border-radius: 4px;
+            color: #ccc;
+            font: 11px monospace;
+            cursor: pointer;
+        }
+        .rhythm-measures button:hover {
+            border-color: #9b59b6;
+        }
+
+        /* Audition button */
+        .audition-btn {
+            width: 100%;
+            padding: 10px;
+            background: var(--accent);
+            color: var(--btn-active-text);
+            border: none;
+            border-radius: 6px;
+            font-family: inherit;
+            font-size: var(--fs);
+            font-weight: 700;
+            letter-spacing: 1px;
+            cursor: pointer;
+            margin-bottom: 20px;
+            transition: opacity 0.15s;
+        }
+
+        .audition-btn:hover {
+            opacity: 0.85;
+        }
+
+        .audition-btn:active {
+            opacity: 0.7;
+        }
+
+        /* ── Preview Panel ───────────────────────────────────── */
+
+        .preview-panel {
+            background: var(--bg-panel);
+            border-left: 1px solid var(--border);
+            padding: 20px 24px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .preview-section h3 {
+            font-size: var(--fs);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--accent);
+            margin-bottom: 10px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        /* Canvas */
+        .canvas-container {
+            background: var(--canvas-bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+        }
+
+        /* Bit Array (game layout) */
+        .bit-array {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .bit-row {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 3px;
+        }
+
+        .bit-row-label {
+            font-size: var(--fs);
+            color: var(--text-muted);
+            letter-spacing: 1px;
+            text-align: center;
+            margin-bottom: 2px;
+        }
+
+        .bit-cell {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 4px 2px;
+            background: var(--note-btn);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.1s;
+            gap: 1px;
+            min-height: 56px;
+        }
+
+        .bit-cell:hover {
+            background: var(--note-btn-hover);
+            border-color: var(--border-light);
+        }
+
+        .bit-cell:active, .bit-cell.playing {
+            background: var(--note-btn-active);
+            border-color: var(--accent);
+        }
+
+        .bit-cell:active .bit-note, .bit-cell.playing .bit-note {
+            color: var(--btn-active-text);
+        }
+
+        .bit-cell:active .bit-pos, .bit-cell.playing .bit-pos,
+        .bit-cell:active .bit-val, .bit-cell.playing .bit-val {
+            color: var(--btn-active-text);
+            opacity: 0.7;
+        }
+
+        .bit-cell.inactive {
+            opacity: 0.35;
+            border-style: dashed;
+        }
+
+        .bit-pos {
+            font-size: var(--fs);
+            color: var(--text-muted);
+            line-height: 1;
+        }
+
+        .bit-note {
+            font-size: var(--fs);
+            font-weight: 700;
+            color: var(--accent);
+            line-height: 1.2;
+        }
+
+        .bit-val {
+            font-size: var(--fs);
+            color: var(--text-muted);
+            line-height: 1;
+        }
+
+        /* Level selector */
+        .level-selector {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin-bottom: 10px;
+        }
+
+        .level-btn {
+            padding: 6px 8px;
+            background: var(--btn-bg);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--text-dim);
+            font-family: inherit;
+            font-size: var(--fs);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .level-btn:hover {
+            background: var(--btn-hover);
+            color: var(--text);
+        }
+
+        .level-btn.active {
+            background: var(--btn-active);
+            color: var(--btn-active-text);
+            border-color: var(--accent);
+        }
+
+        /* Melody buttons */
+        .melody-controls {
+            display: flex;
+            gap: 6px;
+        }
+
+        .melody-btn {
+            flex: 1;
+            padding: 8px;
+            background: var(--btn-bg);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--text);
+            font-family: inherit;
+            font-size: var(--fs);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .melody-btn:hover {
+            background: var(--btn-hover);
+        }
+
+        .melody-btn.stop {
+            color: var(--red);
+        }
+
+        .melody-btn:active {
+            background: var(--accent);
+            color: var(--btn-active-text);
+        }
+
+        .melody-btn.selected {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        /* Export */
+        .export-area {
+            background: var(--canvas-bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 12px;
+            font-family: inherit;
+            font-size: var(--fs);
+            color: var(--text-dim);
+            white-space: pre;
+            line-height: 1.6;
+            overflow-x: auto;
+            max-height: 240px;
+            overflow-y: auto;
+        }
+
+        .export-buttons {
+            display: flex;
+            gap: 6px;
+            margin-top: 8px;
+        }
+
+        .export-btn {
+            flex: 1;
+            padding: 8px;
+            background: var(--btn-bg);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--text);
+            font-family: inherit;
+            font-size: var(--fs);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .export-btn:hover {
+            background: var(--btn-hover);
+        }
+
+        .export-btn.copied {
+            background: var(--green);
+            color: var(--btn-active-text);
+            border-color: var(--green);
+        }
+
+        /* Tab switcher for export */
+        .export-tabs {
+            display: flex;
+            gap: 0;
+            margin-bottom: 8px;
+        }
+
+        .export-tab {
+            flex: 1;
+            padding: 6px 8px;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            color: var(--text-dim);
+            font-family: inherit;
+            font-size: var(--fs);
+            font-weight: 600;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.15s;
+        }
+
+        .export-tab:first-child {
+            border-radius: 4px 0 0 4px;
+        }
+
+        .export-tab:last-child {
+            border-radius: 0 4px 4px 0;
+        }
+
+        .export-tab.active {
+            background: var(--accent);
+            color: var(--btn-active-text);
+            border-color: var(--accent);
+        }
+
+        /* Settings footer */
+        .settings-footer {
+            margin-top: auto;
+            padding-top: 12px;
+            border-top: 1px solid var(--border);
+        }
+
+        .clear-btn {
+            width: 100%;
+            padding: 8px;
+            background: none;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--text-muted);
+            font-family: inherit;
+            font-size: var(--fs);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .clear-btn:hover {
+            border-color: var(--red);
+            color: var(--red);
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>CHIPTUNEKIT PLAYGROUND</h1>
+    <span class="subtitle">Tone Designer for BQ16</span>
+</header>
+
+<main class="layout">
+
+    <!-- ── Presets Sidebar ─────────────────────────────── -->
+    <aside class="presets-panel">
+        <h2>Presets</h2>
+        <div id="preset-list"></div>
+    </aside>
+
+    <!-- ── Controls Panel ──────────────────────────────── -->
+    <section class="controls-panel">
+
+        <button class="audition-btn" id="audition-btn">
+            &#9654; AUDITION (A4 440Hz)
+        </button>
+
+        <!-- Waveform -->
+        <div class="section">
+            <div class="section-title">Waveform</div>
+            <div class="waveform-selector" id="waveform-selector">
+                <button class="wave-btn" data-wave="sine">Sine</button>
+                <button class="wave-btn" data-wave="triangle">Triangle</button>
+                <button class="wave-btn" data-wave="square">Square</button>
+                <button class="wave-btn" data-wave="sawtooth">Sawtooth</button>
+                <button class="wave-btn" data-wave="pulse">Pulse</button>
+            </div>
+            <div class="slider-row" id="duty-cycle-row">
+                <div class="slider-label">
+                    <span>Duty Cycle</span>
+                    <span class="slider-value" id="duty-cycle-value">50%</span>
+                </div>
+                <input type="range" id="duty-cycle" min="5" max="50" value="50" step="1">
+            </div>
+        </div>
+
+        <!-- Envelope -->
+        <div class="section">
+            <div class="section-title">Envelope</div>
+            <div class="slider-row">
+                <div class="slider-label">
+                    <span>Attack</span>
+                    <span class="slider-value" id="attack-value">0 ms</span>
+                </div>
+                <input type="range" id="attack" min="0" max="80" value="0" step="1">
+            </div>
+            <div class="slider-row">
+                <div class="slider-label">
+                    <span>Release</span>
+                    <span class="slider-value" id="release-value">0 ms</span>
+                </div>
+                <input type="range" id="release" min="0" max="150" value="0" step="1">
+            </div>
+        </div>
+
+        <!-- Volume & Duration -->
+        <div class="section">
+            <div class="section-title">Output</div>
+            <div class="slider-row">
+                <div class="slider-label">
+                    <span>Volume</span>
+                    <span class="slider-value" id="volume-value">30%</span>
+                </div>
+                <input type="range" id="volume" min="0" max="100" value="30" step="1">
+            </div>
+            <div class="slider-row">
+                <div class="slider-label">
+                    <span>Note Duration</span>
+                    <span class="slider-value" id="duration-value">150 ms</span>
+                </div>
+                <input type="range" id="duration" min="50" max="500" value="150" step="5">
+            </div>
+            <div class="slider-row">
+                <div class="slider-label">
+                    <span>Sequence Tempo</span>
+                    <span class="slider-value" id="tempo-value">120 bpm</span>
+                </div>
+                <input type="range" id="tempo" min="60" max="600" value="120" step="10">
+            </div>
+        </div>
+
+        <!-- Rhythm -->
+        <div class="section">
+            <div class="section-title">Rhythm Pattern</div>
+            <div class="toggle-row">
+                <label class="toggle">
+                    <input type="checkbox" id="rhythm-enabled">
+                    <span class="toggle-track"></span>
+                    <span class="toggle-knob"></span>
+                </label>
+                <label for="rhythm-enabled">Enable Rhythm</label>
+            </div>
+            <div class="rhythm-beats" id="rhythm-beats"></div>
+            <div class="rhythm-label" id="rhythm-label">| Da Da Daa Da |</div>
+            <div class="rhythm-measures">
+                <button id="rhythm-remove-measure" title="Remove measure">− Measure</button>
+                <button id="rhythm-add-measure" title="Add measure">+ Measure</button>
+            </div>
+            <div class="slider-row">
+                <div class="slider-label">
+                    <span>Long Note</span>
+                    <span class="slider-value" id="rhythm-multiplier-value">2.0×</span>
+                </div>
+                <input type="range" id="rhythm-multiplier" min="15" max="40" value="20" step="1">
+            </div>
+        </div>
+
+        <!-- Modulation -->
+        <div class="section">
+            <div class="section-title">Modulation (LFO)</div>
+            <div class="toggle-row">
+                <label class="toggle">
+                    <input type="checkbox" id="mod-enabled">
+                    <span class="toggle-track"></span>
+                    <span class="toggle-knob"></span>
+                </label>
+                <label for="mod-enabled">Enable Modulation</label>
+            </div>
+            <div class="slider-row">
+                <div class="slider-label">
+                    <span>Rate</span>
+                    <span class="slider-value" id="mod-rate-value">0.5 Hz</span>
+                </div>
+                <input type="range" id="mod-rate" min="1" max="50" value="5" step="1">
+            </div>
+            <div class="slider-row">
+                <div class="slider-label">
+                    <span>Depth</span>
+                    <span class="slider-value" id="mod-depth-value">50%</span>
+                </div>
+                <input type="range" id="mod-depth" min="0" max="100" value="50" step="1">
+            </div>
+        </div>
+
+        <!-- Filter -->
+        <div class="section">
+            <div class="section-title">Low-Pass Filter</div>
+            <div class="toggle-row">
+                <label class="toggle">
+                    <input type="checkbox" id="filter-enabled">
+                    <span class="toggle-track"></span>
+                    <span class="toggle-knob"></span>
+                </label>
+                <label for="filter-enabled">Enable Filter</label>
+            </div>
+            <div class="slider-row">
+                <div class="slider-label">
+                    <span>Cutoff</span>
+                    <span class="slider-value" id="cutoff-value">8000 Hz</span>
+                </div>
+                <input type="range" id="cutoff" min="0" max="100" value="72" step="1">
+            </div>
+            <div class="slider-row">
+                <div class="slider-label">
+                    <span>Resonance (Q)</span>
+                    <span class="slider-value" id="resonance-value">1.0</span>
+                </div>
+                <input type="range" id="resonance" min="1" max="100" value="10" step="1">
+            </div>
+        </div>
+
+    </section>
+
+    <!-- ── Preview Panel ───────────────────────────────── -->
+    <section class="preview-panel">
+
+        <!-- Waveform display -->
+        <div class="preview-section">
+            <h3>Waveform Shape</h3>
+            <div class="canvas-container">
+                <canvas id="waveform-canvas" width="400" height="140"></canvas>
+            </div>
+        </div>
+
+        <!-- Envelope display -->
+        <div class="preview-section">
+            <h3>Amplitude Envelope</h3>
+            <div class="canvas-container">
+                <canvas id="envelope-canvas" width="400" height="100"></canvas>
+            </div>
+        </div>
+
+        <!-- Level selector + Bit Array -->
+        <div class="preview-section">
+            <h3>Bit Memory (Tap Notes)</h3>
+            <div class="level-selector" id="level-selector"></div>
+            <div class="bit-array" id="bit-array"></div>
+        </div>
+
+        <!-- Sequence controls -->
+        <div class="preview-section">
+            <h3>Traversals</h3>
+            <div class="melody-controls">
+                <button class="melody-btn" data-seq="sweep-up">Sweep ↑</button>
+                <button class="melody-btn" data-seq="sweep-down">Sweep ↓</button>
+                <button class="melody-btn" data-seq="outside-in">Outside In</button>
+                <button class="melody-btn" data-seq="random">Random</button>
+            </div>
+        </div>
+
+        <div class="preview-section">
+            <h3>Sorting Algorithms</h3>
+            <div class="melody-controls">
+                <button class="melody-btn" data-seq="bubble">Bubble</button>
+                <button class="melody-btn" data-seq="selection">Selection</button>
+                <button class="melody-btn" data-seq="insertion">Insertion</button>
+                <button class="melody-btn" data-seq="quick">Quick</button>
+            </div>
+        </div>
+
+        <div class="preview-section">
+            <h3>Melody</h3>
+            <div class="melody-controls">
+                <button class="melody-btn" data-seq="ode">Ode to Joy</button>
+                <button class="melody-btn stop" id="stop-melody">Stop</button>
+            </div>
+        </div>
+
+        <!-- Export -->
+        <div class="preview-section">
+            <h3>Export</h3>
+            <div class="export-tabs">
+                <button class="export-tab active" data-tab="settings">Settings</button>
+                <button class="export-tab" data-tab="swift">Swift Code</button>
+            </div>
+            <div class="export-area" id="export-area"></div>
+            <div class="export-buttons">
+                <button class="export-btn" id="copy-export">Copy to Clipboard</button>
+                <button class="export-btn" id="save-export">Save to File</button>
+                <button class="export-btn" id="load-export">Load from File</button>
+            </div>
+            <input type="file" id="file-input" accept=".txt" style="display:none">
+        </div>
+
+        <!-- Symphony Export -->
+        <div class="preview-section">
+            <h3>Symphony Export</h3>
+            <div class="export-buttons">
+                <button class="export-btn" id="export-symphony">Export WAV (load 7 files)</button>
+            </div>
+            <input type="file" id="symphony-files" accept=".txt" multiple style="display:none">
+            <div id="symphony-status" style="font-size:var(--fs);color:var(--text-dim);margin-top:8px;"></div>
+        </div>
+
+        <!-- Settings -->
+        <div class="settings-footer">
+            <button class="clear-btn" id="clear-settings">Clear Saved Settings</button>
+        </div>
+
+    </section>
+
+</main>
+
+<script>
+// ── Note Frequencies ────────────────────────────────────────
+// Matches ChiptuneKit's noteFrequencies dictionary exactly
+
+const NOTE_FREQUENCIES = {
+    'C4': 261.63, 'D4': 293.66, 'E4': 329.63, 'F4': 349.23,
+    'G4': 392.00, 'A4': 440.00, 'B4': 493.88, 'C5': 523.25,
+    'D5': 587.33, 'E5': 659.25, 'F5': 698.46, 'G5': 783.99
+};
+
+const NOTE_NAMES = Object.keys(NOTE_FREQUENCIES);
+
+const ODE_TO_JOY = [
+    'E4','E4','F4','G4', 'G4','F4','E4','D4',
+    'C4','C4','D4','E4', 'E4','D4','D4','D4'
+];
+
+// Pentatonic scale used by ChiptuneKit.playNoteForBit()
+// Maps bit position % 10 → note
+const PENTATONIC_NOTES = ['C4','D4','E4','G4','A4','C5','D5','E5','G5','A5'];
+const PENTATONIC_FREQ = [
+    261.63, 293.66, 329.63, 392.00, 440.00,  // C4, D4, E4, G4, A4
+    523.25, 587.33, 659.25, 783.99, 880.00   // C5, D5, E5, G5, A5
+];
+
+// Bit position → pentatonic note (matches ChiptuneKit exactly)
+function bitToNote(position) {
+    return PENTATONIC_NOTES[position % PENTATONIC_NOTES.length];
+}
+function bitToFreq(position) {
+    return PENTATONIC_FREQ[position % PENTATONIC_FREQ.length];
+}
+
+// ── BQ16 Difficulty Levels ──────────────────────────────────
+// Matches DifficultyLevel.swift exactly
+
+const LEVELS = [
+    { id: 'nibble',    name: 'NIBBLE',     bits: 4  },
+    { id: 'ascii',     name: 'ASCII',      bits: 7  },
+    { id: 'byte',      name: 'BYTE',       bits: 8  },
+    { id: 'nobble',    name: 'NOBBLE',     bits: 10 },
+    { id: 'tribble',   name: 'TRIBBLE',    bits: 12 },
+    { id: 'gobble',    name: 'GOBBLE',     bits: 14 },
+    { id: 'highcolor', name: 'HIGH COLOR', bits: 16 }
+];
+
+// ── Presets ─────────────────────────────────────────────────
+
+const PRESETS = {
+    classic: {
+        name: 'Classic',
+        desc: 'Current ChiptuneKit default',
+        waveform: 'square', dutyCycle: 50,
+        attackMs: 0, releaseMs: 0,
+        volume: 30, durationMs: 150, tempoBpm: 120,
+        modEnabled: false, modRate: 0.5, modDepth: 0,
+        filterEnabled: false, cutoffHz: 20000, resonance: 1.0,
+        rhythmEnabled: false, rhythmPattern: [1, 1, 2, 1], rhythmMultiplier: 2
+    },
+    softSquare: {
+        name: 'Soft Square',
+        desc: 'Soft envelope, gentle mod',
+        waveform: 'square', dutyCycle: 50,
+        attackMs: 10, releaseMs: 40,
+        volume: 25, durationMs: 150, tempoBpm: 120,
+        modEnabled: true, modRate: 0.3, modDepth: 25,
+        filterEnabled: true, cutoffHz: 6000, resonance: 1.0,
+        rhythmEnabled: false, rhythmPattern: [1, 1, 2, 1], rhythmMultiplier: 2
+    },
+    nesPulse: {
+        name: 'NES Pulse',
+        desc: '25% duty, subtle wobble',
+        waveform: 'pulse', dutyCycle: 25,
+        attackMs: 2, releaseMs: 15,
+        volume: 30, durationMs: 150, tempoBpm: 120,
+        modEnabled: true, modRate: 0.8, modDepth: 15,
+        filterEnabled: false, cutoffHz: 20000, resonance: 1.0,
+        rhythmEnabled: false, rhythmPattern: [1, 1, 2, 1], rhythmMultiplier: 2
+    },
+    triangle: {
+        name: 'Triangle',
+        desc: 'Mellow, slow breathing',
+        waveform: 'triangle', dutyCycle: 50,
+        attackMs: 0, releaseMs: 25,
+        volume: 35, durationMs: 150, tempoBpm: 120,
+        modEnabled: true, modRate: 0.2, modDepth: 30,
+        filterEnabled: false, cutoffHz: 20000, resonance: 1.0,
+        rhythmEnabled: false, rhythmPattern: [1, 1, 2, 1], rhythmMultiplier: 2
+    },
+    gameBoy: {
+        name: 'Game Boy',
+        desc: 'Thin pulse, filter sweep',
+        waveform: 'pulse', dutyCycle: 12,
+        attackMs: 5, releaseMs: 50,
+        volume: 25, durationMs: 150, tempoBpm: 120,
+        modEnabled: true, modRate: 0.4, modDepth: 40,
+        filterEnabled: true, cutoffHz: 4000, resonance: 1.5,
+        rhythmEnabled: false, rhythmPattern: [1, 1, 2, 1], rhythmMultiplier: 2
+    },
+    warm: {
+        name: 'Warm',
+        desc: 'Heavy filter, deep mod',
+        waveform: 'square', dutyCycle: 50,
+        attackMs: 15, releaseMs: 60,
+        volume: 25, durationMs: 180, tempoBpm: 120,
+        modEnabled: true, modRate: 0.3, modDepth: 50,
+        filterEnabled: true, cutoffHz: 2500, resonance: 1.0,
+        rhythmEnabled: false, rhythmPattern: [1, 1, 2, 1], rhythmMultiplier: 2
+    },
+    clean: {
+        name: 'Clean',
+        desc: 'Pure sine, gentle drift',
+        waveform: 'sine', dutyCycle: 50,
+        attackMs: 8, releaseMs: 40,
+        volume: 30, durationMs: 150, tempoBpm: 120,
+        modEnabled: true, modRate: 0.2, modDepth: 20,
+        filterEnabled: false, cutoffHz: 20000, resonance: 1.0,
+        rhythmEnabled: false, rhythmPattern: [1, 1, 2, 1], rhythmMultiplier: 2
+    }
+};
+
+// ── State ───────────────────────────────────────────────────
+
+let state = { ...PRESETS.classic };
+let activePreset = 'classic';
+let activeLevel = LEVELS[6]; // Default: HIGH COLOR (16-bit, all bits active)
+let activeSequence = 'sweep-up'; // Last-played sequence
+let exportTab = 'settings';
+let melodyTimeout = null;
+let melodyTimeouts = [];
+
+// ── Audio Context ───────────────────────────────────────────
+
+let audioCtx = null;
+
+async function ensureAudioContext() {
+    if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (audioCtx.state === 'suspended') {
+        await audioCtx.resume();
+    }
+    return audioCtx;
+}
+
+// ── Pulse Wave Generation ───────────────────────────────────
+// Fourier series: pulse wave with duty cycle d
+// real[n] = (2/(npi)) * sin(2*pi*n*d)
+// imag[n] = (2/(npi)) * (1 - cos(2*pi*n*d))
+
+function createPulseWave(ctx, dutyCycle) {
+    const d = dutyCycle / 100;
+    const harmonics = 64;
+    const real = new Float32Array(harmonics);
+    const imag = new Float32Array(harmonics);
+
+    real[0] = 0; // Normalized — no DC offset
+    imag[0] = 0;
+
+    for (let n = 1; n < harmonics; n++) {
+        real[n] = (2 / (n * Math.PI)) * Math.sin(2 * Math.PI * n * d);
+        imag[n] = (2 / (n * Math.PI)) * (1 - Math.cos(2 * Math.PI * n * d));
+    }
+
+    return ctx.createPeriodicWave(real, imag, { disableNormalization: false });
+}
+
+// ── Modulation (LFO) ────────────────────────────────────────
+// Each property gets a sine wave at a different phase offset
+// so they don't all peak together — creates organic variation.
+
+const MOD_PHASES = {
+    volume: 0,
+    attackMs: Math.PI * 0.5,
+    releaseMs: Math.PI * 1.0,
+    durationMs: Math.PI * 1.5,
+    cutoffHz: Math.PI * 0.25
+};
+
+const MOD_RANGES = {
+    volume:     [0, 100],
+    attackMs:   [0, 80],
+    releaseMs:  [0, 150],
+    durationMs: [50, 500],
+    cutoffHz:   [200, 20000]
+};
+
+function modValue(prop) {
+    const base = state[prop];
+    if (!state.modEnabled) return base;
+
+    const t = performance.now() / 1000;
+    const rate = state.modRate || 0.5;
+    const depth = (state.modDepth || 0) / 100;
+    const phase = MOD_PHASES[prop] || 0;
+    const sine = Math.sin(2 * Math.PI * rate * t + phase);
+    const [min, max] = MOD_RANGES[prop] || [0, 100];
+
+    // Cutoff: modulate in log space for perceptual linearity
+    if (prop === 'cutoffHz') {
+        const logBase = Math.log10(Math.max(min, base));
+        const logMin = Math.log10(min);
+        const logMax = Math.log10(max);
+        const logRange = logMax - logMin;
+        const modulated = logBase + sine * depth * logRange * 0.3;
+        return Math.pow(10, Math.max(logMin, Math.min(logMax, modulated)));
+    }
+
+    const range = max - min;
+    const modulated = base + sine * depth * range * 0.3;
+    return Math.max(min, Math.min(max, modulated));
+}
+
+// ── Rhythm ──────────────────────────────────────────────────
+
+function rhythmMultiplierForNote(noteIndex) {
+    if (!state.rhythmEnabled || !state.rhythmPattern || state.rhythmPattern.length === 0) {
+        return 1;
+    }
+    const raw = state.rhythmPattern[noteIndex % state.rhythmPattern.length];
+    return raw <= 1 ? 1 : state.rhythmMultiplier;
+}
+
+function rhythmMultiplierForNoteWith(noteIndex, settings) {
+    if (!settings.rhythmEnabled || !settings.rhythmPattern || settings.rhythmPattern.length === 0) {
+        return 1;
+    }
+    const raw = settings.rhythmPattern[noteIndex % settings.rhythmPattern.length];
+    return raw <= 1 ? 1 : (settings.rhythmMultiplier || 2);
+}
+
+// ── Play Note ───────────────────────────────────────────────
+
+async function playNote(frequency, durationOverride) {
+    const ctx = await ensureAudioContext();
+    const now = ctx.currentTime;
+    const dur = (durationOverride || modValue('durationMs')) / 1000;
+    const vol = modValue('volume') / 100;
+    const attackTime = Math.min(modValue('attackMs') / 1000, dur * 0.4);
+    const releaseTime = Math.min(modValue('releaseMs') / 1000, dur * 0.4);
+
+    // Oscillator
+    const osc = ctx.createOscillator();
+    if (state.waveform === 'pulse') {
+        osc.setPeriodicWave(createPulseWave(ctx, state.dutyCycle));
+    } else {
+        osc.type = state.waveform;
+    }
+    osc.frequency.value = frequency;
+
+    // Filter
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    if (state.filterEnabled) {
+        filter.frequency.value = modValue('cutoffHz');
+        filter.Q.value = state.resonance;
+    } else {
+        filter.frequency.value = 20000;
+        filter.Q.value = 0.1;
+    }
+
+    // Gain envelope
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.linearRampToValueAtTime(vol, now + attackTime);
+
+    const sustainEnd = now + dur - releaseTime;
+    if (sustainEnd > now + attackTime) {
+        gain.gain.setValueAtTime(vol, sustainEnd);
+    }
+    gain.gain.linearRampToValueAtTime(0.0001, now + dur);
+
+    // Connect: osc → filter → gain → destination
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start(now);
+    osc.stop(now + dur + 0.01);
+}
+
+// ── Sequences ───────────────────────────────────────────────
+
+function stopMelody() {
+    melodyTimeouts.forEach(t => clearTimeout(t));
+    melodyTimeouts = [];
+    // Restore standard layout in case a sort animation was running
+    buildBitArray();
+}
+
+function playSequence(notes) {
+    stopMelody();
+    const bpm = state.tempoBpm || 120;
+    const spacing = 60000 / bpm;
+    let cumulativeTime = 0;
+    notes.forEach((note, i) => {
+        const rm = rhythmMultiplierForNote(i);
+        const t = setTimeout(() => {
+            playNote(NOTE_FREQUENCIES[note], modValue('durationMs') * rm);
+            highlightBitCellsByNote(note);
+        }, cumulativeTime);
+        melodyTimeouts.push(t);
+        cumulativeTime += spacing * rm;
+    });
+}
+
+
+// ── Traversal Sequences ─────────────────────────────────────
+
+function activeBitsArray() {
+    return Array.from({ length: activeLevel.bits }, (_, i) => i);
+}
+
+function shuffledActiveBits() {
+    const bits = activeBitsArray();
+    for (let i = bits.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [bits[i], bits[j]] = [bits[j], bits[i]];
+    }
+    return bits;
+}
+
+function sweepUpTrace() { return activeBitsArray(); }
+
+function sweepDownTrace() { return activeBitsArray().reverse(); }
+
+function outsideInTrace() {
+    const bits = activeBitsArray();
+    const trace = [];
+    let lo = 0, hi = bits.length - 1;
+    while (lo <= hi) {
+        trace.push(bits[lo++]);
+        if (lo <= hi) trace.push(bits[hi--]);
+    }
+    return trace;
+}
+
+function randomTrace() { return shuffledActiveBits(); }
+
+// ── Sorting Algorithm Traces ────────────────────────────────
+// Each returns an array of bit positions in access order.
+// The array starts shuffled; every access (compare/swap) is recorded.
+
+// Sort step format: { arr: [...], hl: [idx, idx], note: bitPos }
+// arr = current array state, hl = highlighted indices, note = bit to play
+
+// All sorts use DESCENDING order (high→low) to match the game layout
+
+function bubbleSortSteps() {
+    const arr = shuffledActiveBits();
+    const steps = [{ arr: [...arr], hl: [], note: -1 }];
+    let swapped;
+    do {
+        swapped = false;
+        for (let j = 0; j < arr.length - 1; j++) {
+            if (arr[j] < arr[j + 1]) {
+                [arr[j], arr[j + 1]] = [arr[j + 1], arr[j]];
+                swapped = true;
+            }
+            steps.push({ arr: [...arr], hl: [j, j + 1], note: arr[j] });
+        }
+    } while (swapped);
+    return steps;
+}
+
+function selectionSortSteps() {
+    const arr = shuffledActiveBits();
+    const steps = [{ arr: [...arr], hl: [], note: -1 }];
+    for (let i = 0; i < arr.length - 1; i++) {
+        let maxIdx = i;
+        for (let j = i + 1; j < arr.length; j++) {
+            if (arr[j] > arr[maxIdx]) maxIdx = j;
+            steps.push({ arr: [...arr], hl: [i, j], note: arr[j] });
+        }
+        if (maxIdx !== i) {
+            [arr[i], arr[maxIdx]] = [arr[maxIdx], arr[i]];
+            steps.push({ arr: [...arr], hl: [i], note: arr[i] });
+        }
+    }
+    return steps;
+}
+
+function insertionSortSteps() {
+    const arr = shuffledActiveBits();
+    const steps = [{ arr: [...arr], hl: [], note: -1 }];
+    for (let i = 1; i < arr.length; i++) {
+        const key = arr[i];
+        let j = i - 1;
+        steps.push({ arr: [...arr], hl: [i], note: key });
+        while (j >= 0 && arr[j] < key) {
+            arr[j + 1] = arr[j];
+            steps.push({ arr: [...arr], hl: [j, j + 1], note: arr[j] });
+            j--;
+        }
+        arr[j + 1] = key;
+        steps.push({ arr: [...arr], hl: [j + 1], note: key });
+    }
+    return steps;
+}
+
+function quickSortSteps() {
+    const arr = shuffledActiveBits();
+    const steps = [{ arr: [...arr], hl: [], note: -1 }];
+    function qs(lo, hi) {
+        if (lo >= hi) return;
+        const pivot = arr[hi];
+        steps.push({ arr: [...arr], hl: [hi], note: pivot });
+        let i = lo;
+        for (let j = lo; j < hi; j++) {
+            steps.push({ arr: [...arr], hl: [j, hi], note: arr[j] });
+            if (arr[j] > pivot) {
+                if (i !== j) {
+                    [arr[i], arr[j]] = [arr[j], arr[i]];
+                    steps.push({ arr: [...arr], hl: [i, j], note: arr[i] });
+                }
+                i++;
+            }
+        }
+        [arr[i], arr[hi]] = [arr[hi], arr[i]];
+        steps.push({ arr: [...arr], hl: [i], note: pivot });
+        qs(lo, i - 1);
+        qs(i + 1, hi);
+    }
+    qs(0, arr.length - 1);
+    return steps;
+}
+
+// ── Sort Animation Rendering ────────────────────────────────
+
+function renderSortState(arr, highlightIndices) {
+    const container = document.getElementById('bit-array');
+    container.innerHTML = '';
+    const hl = new Set(highlightIndices || []);
+
+    if (arr.length > 8) {
+        // Two rows
+        const label1 = document.createElement('div');
+        label1.className = 'bit-row-label';
+        label1.textContent = 'SORTING ' + arr.length + ' BITS';
+        container.appendChild(label1);
+
+        const row1 = document.createElement('div');
+        row1.className = 'bit-row';
+        for (let i = 0; i < 8; i++) {
+            row1.appendChild(makeSortCell(arr[i], hl.has(i)));
+        }
+        container.appendChild(row1);
+
+        const row2 = document.createElement('div');
+        row2.className = 'bit-row';
+        for (let i = 8; i < arr.length; i++) {
+            row2.appendChild(makeSortCell(arr[i], hl.has(i)));
+        }
+        // Pad empty slots so grid stays aligned
+        for (let i = arr.length; i < 16; i++) {
+            const pad = document.createElement('div');
+            pad.style.visibility = 'hidden';
+            row2.appendChild(pad);
+        }
+        container.appendChild(row2);
+    } else {
+        const label = document.createElement('div');
+        label.className = 'bit-row-label';
+        label.textContent = 'SORTING ' + arr.length + ' BITS';
+        container.appendChild(label);
+
+        const row = document.createElement('div');
+        row.className = 'bit-row';
+        for (let i = 0; i < arr.length; i++) {
+            row.appendChild(makeSortCell(arr[i], hl.has(i)));
+        }
+        container.appendChild(row);
+    }
+}
+
+function makeSortCell(bitPos, isHighlighted) {
+    const note = bitToNote(bitPos);
+    const cell = document.createElement('div');
+    cell.className = 'bit-cell' + (isHighlighted ? ' playing' : '');
+
+    const posEl = document.createElement('span');
+    posEl.className = 'bit-pos';
+    posEl.textContent = bitPos;
+
+    const noteEl = document.createElement('span');
+    noteEl.className = 'bit-note';
+    noteEl.textContent = note;
+
+    const valEl = document.createElement('span');
+    valEl.className = 'bit-val';
+    valEl.textContent = Math.pow(2, bitPos).toLocaleString();
+
+    cell.appendChild(posEl);
+    cell.appendChild(noteEl);
+    cell.appendChild(valEl);
+    return cell;
+}
+
+function playSortAnimation(steps) {
+    stopMelody();
+    const bpm = state.tempoBpm || 120;
+    const spacing = 60000 / bpm;
+    let cumulativeTime = 0;
+
+    steps.forEach((step, i) => {
+        const rm = rhythmMultiplierForNote(i);
+        const t = setTimeout(() => {
+            renderSortState(step.arr, step.hl);
+            if (step.note >= 0) {
+                playNote(bitToFreq(step.note), modValue('durationMs') * rm);
+            }
+        }, cumulativeTime);
+        melodyTimeouts.push(t);
+        cumulativeTime += spacing * rm;
+    });
+
+    // Restore standard layout after animation + pause
+    const restoreT = setTimeout(() => {
+        buildBitArray();
+    }, cumulativeTime + 800);
+    melodyTimeouts.push(restoreT);
+}
+
+// ── Unified Playback ────────────────────────────────────────
+
+function playBitTrace(trace) {
+    stopMelody();
+    const bpm = state.tempoBpm || 120;
+    const noteSpacing = 60000 / bpm;
+    let cumulativeTime = 0;
+    trace.forEach((pos, i) => {
+        const rm = rhythmMultiplierForNote(i);
+        const t = setTimeout(() => {
+            playNote(bitToFreq(pos), modValue('durationMs') * rm);
+            highlightBitCell(pos);
+        }, cumulativeTime);
+        melodyTimeouts.push(t);
+        cumulativeTime += noteSpacing * rm;
+    });
+}
+
+// Sequence dispatcher
+const SEQUENCES = {
+    'sweep-up':    { type: 'trace', fn: sweepUpTrace },
+    'sweep-down':  { type: 'trace', fn: sweepDownTrace },
+    'outside-in':  { type: 'trace', fn: outsideInTrace },
+    'random':      { type: 'trace', fn: randomTrace },
+    'bubble':      { type: 'sort',  fn: bubbleSortSteps },
+    'selection':   { type: 'sort',  fn: selectionSortSteps },
+    'insertion':   { type: 'sort',  fn: insertionSortSteps },
+    'quick':       { type: 'sort',  fn: quickSortSteps },
+    'ode':         { type: 'melody' }
+};
+
+function highlightBitCell(position) {
+    const btn = document.querySelector(`.bit-cell[data-pos="${position}"]`);
+    if (btn) {
+        btn.classList.add('playing');
+        setTimeout(() => btn.classList.remove('playing'), state.durationMs * 0.8);
+    }
+}
+
+function highlightBitCellsByNote(noteName) {
+    // Ode to Joy uses chromatic notes — highlight all bit cells mapped to that note
+    document.querySelectorAll(`.bit-cell[data-note="${noteName}"]`).forEach(btn => {
+        btn.classList.add('playing');
+        setTimeout(() => btn.classList.remove('playing'), state.durationMs * 0.8);
+    });
+}
+
+// ── Filter Slider ↔ Frequency (logarithmic) ────────────────
+
+function sliderToFreq(val) {
+    const minLog = Math.log10(200);
+    const maxLog = Math.log10(20000);
+    return Math.pow(10, minLog + (maxLog - minLog) * val / 100);
+}
+
+function freqToSlider(freq) {
+    const minLog = Math.log10(200);
+    const maxLog = Math.log10(20000);
+    return ((Math.log10(freq) - minLog) / (maxLog - minLog)) * 100;
+}
+
+// ── Resonance slider ↔ Q value (logarithmic) ───────────────
+
+function sliderToQ(val) {
+    // 1 → 0.1, 100 → 15
+    return 0.1 * Math.pow(150, val / 100);
+}
+
+function qToSlider(q) {
+    return (Math.log(q / 0.1) / Math.log(150)) * 100;
+}
+
+// ── Waveform Canvas ─────────────────────────────────────────
+
+function drawWaveform() {
+    const canvas = document.getElementById('waveform-canvas');
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width;
+    const h = canvas.height;
+    const mid = h / 2;
+    const amp = h * 0.38;
+
+    ctx.clearRect(0, 0, w, h);
+
+    // Grid
+    ctx.strokeStyle = getComputedStyle(document.documentElement)
+        .getPropertyValue('--canvas-grid');
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, mid); ctx.lineTo(w, mid);
+    ctx.stroke();
+
+    // Waveform
+    ctx.strokeStyle = getComputedStyle(document.documentElement)
+        .getPropertyValue('--canvas-wave');
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+
+    for (let x = 0; x < w; x++) {
+        const t = x / w; // 0 to 1 = one cycle
+        let y;
+
+        switch (state.waveform) {
+            case 'sine':
+                y = Math.sin(2 * Math.PI * t);
+                break;
+            case 'triangle':
+                y = 1 - 4 * Math.abs(Math.round(t) - t);
+                break;
+            case 'square':
+                y = t < 0.5 ? 1 : -1;
+                break;
+            case 'sawtooth':
+                y = 2 * (t - Math.floor(t + 0.5));
+                break;
+            case 'pulse':
+                y = t < (state.dutyCycle / 100) ? 1 : -1;
+                break;
+            default:
+                y = 0;
+        }
+
+        const py = mid - y * amp;
+        if (x === 0) ctx.moveTo(x, py);
+        else ctx.lineTo(x, py);
+    }
+    ctx.stroke();
+
+    // Labels
+    ctx.fillStyle = getComputedStyle(document.documentElement)
+        .getPropertyValue('--text-muted');
+    ctx.font = '12px SF Mono, Menlo, Consolas, monospace';
+    ctx.fillText('+1', 4, mid - amp + 10);
+    ctx.fillText('−1', 4, mid + amp - 4);
+    ctx.fillText('0', 4, mid - 3);
+}
+
+// ── Envelope Canvas ─────────────────────────────────────────
+
+function drawEnvelope() {
+    const canvas = document.getElementById('envelope-canvas');
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width;
+    const h = canvas.height;
+    const pad = 20;
+    const drawW = w - pad * 2;
+    const drawH = h - pad;
+    const dur = state.durationMs;
+    const attack = Math.min(state.attackMs, dur * 0.4);
+    const release = Math.min(state.releaseMs, dur * 0.4);
+
+    ctx.clearRect(0, 0, w, h);
+
+    // Grid baseline
+    ctx.strokeStyle = getComputedStyle(document.documentElement)
+        .getPropertyValue('--canvas-grid');
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(pad, h - pad / 2);
+    ctx.lineTo(w - pad, h - pad / 2);
+    ctx.stroke();
+
+    // Time markers
+    ctx.fillStyle = getComputedStyle(document.documentElement)
+        .getPropertyValue('--text-muted');
+    ctx.font = '12px SF Mono, Menlo, Consolas, monospace';
+    ctx.fillText('0', pad, h - 2);
+    ctx.fillText(dur + 'ms', w - pad - 30, h - 2);
+
+    // Envelope shape
+    const attackX = pad + (attack / dur) * drawW;
+    const releaseStartX = pad + ((dur - release) / dur) * drawW;
+    const endX = pad + drawW;
+    const top = pad / 2;
+    const bottom = h - pad / 2;
+
+    ctx.strokeStyle = getComputedStyle(document.documentElement)
+        .getPropertyValue('--canvas-env');
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(pad, bottom);          // Start at 0
+    ctx.lineTo(attackX, top);          // Attack ramp up
+    ctx.lineTo(releaseStartX, top);    // Sustain at max
+    ctx.lineTo(endX, bottom);          // Release ramp down
+    ctx.stroke();
+
+    // Fill
+    ctx.fillStyle = getComputedStyle(document.documentElement)
+        .getPropertyValue('--accent-glow');
+    ctx.beginPath();
+    ctx.moveTo(pad, bottom);
+    ctx.lineTo(attackX, top);
+    ctx.lineTo(releaseStartX, top);
+    ctx.lineTo(endX, bottom);
+    ctx.closePath();
+    ctx.fill();
+
+    // Labels
+    if (attack > 0) {
+        ctx.fillStyle = getComputedStyle(document.documentElement)
+            .getPropertyValue('--text-dim');
+        ctx.fillText(attack + 'ms', attackX - 10, top + 14);
+    }
+}
+
+// ── Export ───────────────────────────────────────────────────
+
+function getExportSettings() {
+    return [
+        '# ChiptuneKit Tone Settings',
+        '# Generated by ChiptuneKit Playground',
+        '',
+        `Level: ${activeLevel.name} ${activeLevel.bits}`,
+        `Sequence: ${activeSequence}`,
+        '',
+        `Waveform: ${state.waveform}`,
+        `DutyCycle: ${state.dutyCycle}`,
+        `AttackMs: ${state.attackMs}`,
+        `ReleaseMs: ${state.releaseMs}`,
+        `Volume: ${state.volume}`,
+        `NoteDurationMs: ${state.durationMs}`,
+        `TempoBpm: ${state.tempoBpm || 120}`,
+        `ModEnabled: ${state.modEnabled || false}`,
+        `ModRate: ${(state.modRate || 0.5).toFixed(1)}`,
+        `ModDepth: ${state.modDepth || 0}`,
+        `FilterEnabled: ${state.filterEnabled}`,
+        `FilterCutoffHz: ${Math.round(state.cutoffHz)}`,
+        `FilterResonance: ${state.resonance.toFixed(1)}`,
+        `RhythmEnabled: ${state.rhythmEnabled || false}`,
+        `RhythmPattern: ${(state.rhythmPattern || [1,1,2,1]).join(',')}`,
+        `RhythmMultiplier: ${state.rhythmMultiplier || 2}`
+    ].join('\n');
+}
+
+function getExportSwift() {
+    const waveEnum = state.waveform === 'pulse' ? '.pulse' : `.${state.waveform}`;
+    return [
+        '// ChiptuneKit ToneSettings',
+        '// Generated by ChiptuneKit Playground',
+        '',
+        'public struct ToneSettings {',
+        '    public enum Waveform {',
+        '        case sine, triangle, square, sawtooth, pulse',
+        '    }',
+        '',
+        `    var waveform: Waveform = ${waveEnum}`,
+        `    var dutyCycle: Double = ${(state.dutyCycle / 100).toFixed(2)}`,
+        `    var attackTime: Double = ${(state.attackMs / 1000).toFixed(3)}`,
+        `    var releaseTime: Double = ${(state.releaseMs / 1000).toFixed(3)}`,
+        `    var volume: Float = ${(state.volume / 100).toFixed(2)}`,
+        `    var defaultDuration: Double = ${(state.durationMs / 1000).toFixed(3)}`,
+        `    var tempoBpm: Int = ${state.tempoBpm || 120}`,
+        `    var modEnabled: Bool = ${state.modEnabled || false}`,
+        `    var modRate: Double = ${(state.modRate || 0.5).toFixed(1)}`,
+        `    var modDepth: Double = ${(state.modDepth || 0) / 100}`,
+        `    var filterEnabled: Bool = ${state.filterEnabled}`,
+        `    var filterCutoff: Double = ${Math.round(state.cutoffHz)}`,
+        `    var filterResonance: Double = ${state.resonance.toFixed(1)}`,
+        `    var rhythmEnabled: Bool = ${state.rhythmEnabled || false}`,
+        `    var rhythmPattern: [Double] = [${(state.rhythmPattern || [1,1,2,1]).join(', ')}]`,
+        `    var rhythmMultiplier: Double = ${(state.rhythmMultiplier || 2).toFixed(1)}`,
+        '}'
+    ].join('\n');
+}
+
+function updateExport() {
+    const area = document.getElementById('export-area');
+    area.textContent = exportTab === 'settings' ? getExportSettings() : getExportSwift();
+}
+
+function updateSequenceHighlight() {
+    document.querySelectorAll('[data-seq]').forEach(btn => {
+        btn.classList.toggle('selected', btn.dataset.seq === activeSequence);
+    });
+}
+
+// ── Import Settings ──────────────────────────────────────────
+
+function importSettings(text) {
+    const MAP = {
+        'Level':           (v) => {
+            // Parse "BYTE 8" or "HIGH COLOR 16" — match by bit count at end
+            const bits = parseInt(v.match(/(\d+)$/)?.[1]);
+            const found = LEVELS.find(l => l.bits === bits);
+            if (found) {
+                activeLevel = found;
+                buildLevelSelector();
+                buildBitArray();
+            }
+        },
+        'Sequence':        (v) => {
+            if (SEQUENCES[v]) {
+                activeSequence = v;
+            }
+        },
+        'Waveform':        (v) => { state.waveform = v; },
+        'DutyCycle':       (v) => { state.dutyCycle = parseInt(v); },
+        'AttackMs':        (v) => { state.attackMs = parseInt(v); },
+        'ReleaseMs':       (v) => { state.releaseMs = parseInt(v); },
+        'Volume':          (v) => { state.volume = parseInt(v); },
+        'NoteDurationMs':  (v) => { state.durationMs = parseInt(v); },
+        'TempoBpm':        (v) => { state.tempoBpm = parseInt(v); },
+        'ModEnabled':      (v) => { state.modEnabled = v === 'true'; },
+        'ModRate':         (v) => { state.modRate = parseFloat(v); },
+        'ModDepth':        (v) => { state.modDepth = parseInt(v); },
+        'FilterEnabled':   (v) => { state.filterEnabled = v === 'true'; },
+        'FilterCutoffHz':  (v) => { state.cutoffHz = parseInt(v); },
+        'FilterResonance': (v) => { state.resonance = parseFloat(v); },
+        'RhythmEnabled':   (v) => { state.rhythmEnabled = v === 'true'; },
+        'RhythmPattern':   (v) => { state.rhythmPattern = v.split(',').map(Number); },
+        'RhythmMultiplier':(v) => { state.rhythmMultiplier = parseFloat(v); }
+    };
+
+    let count = 0;
+    text.split('\n').forEach(line => {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith('#')) return;
+        const colon = trimmed.indexOf(':');
+        if (colon < 0) return;
+        const key = trimmed.substring(0, colon).trim();
+        const val = trimmed.substring(colon + 1).trim();
+        if (MAP[key]) {
+            MAP[key](val);
+            count++;
+        }
+    });
+
+    if (count > 0) {
+        activePreset = detectPreset();
+        stateToUI();
+        saveToStorage();
+        const btn = document.getElementById('load-export');
+        btn.textContent = `Loaded ${count} settings`;
+        setTimeout(() => { btn.textContent = 'Load from File'; }, 2000);
+    }
+}
+
+// ── Symphony Export (Offline Rendering → WAV) ───────────────
+
+function parseSettingsText(text) {
+    const s = {};
+    text.split('\n').forEach(line => {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith('#')) return;
+        const colon = trimmed.indexOf(':');
+        if (colon < 0) return;
+        const key = trimmed.substring(0, colon).trim();
+        const val = trimmed.substring(colon + 1).trim();
+        const MAP = {
+            'Level': v => { const bits = parseInt(v.match(/(\d+)$/)?.[1]); if (bits) s.bits = bits; },
+            'Sequence': v => { s.sequence = v; },
+            'Waveform': v => { s.waveform = v; },
+            'DutyCycle': v => { s.dutyCycle = parseInt(v); },
+            'AttackMs': v => { s.attackMs = parseInt(v); },
+            'ReleaseMs': v => { s.releaseMs = parseInt(v); },
+            'Volume': v => { s.volume = parseInt(v); },
+            'NoteDurationMs': v => { s.durationMs = parseInt(v); },
+            'TempoBpm': v => { s.tempoBpm = parseInt(v); },
+            'ModEnabled': v => { s.modEnabled = v === 'true'; },
+            'ModRate': v => { s.modRate = parseFloat(v); },
+            'ModDepth': v => { s.modDepth = parseInt(v); },
+            'FilterEnabled': v => { s.filterEnabled = v === 'true'; },
+            'FilterCutoffHz': v => { s.cutoffHz = parseInt(v); },
+            'FilterResonance': v => { s.resonance = parseFloat(v); }
+        };
+        if (MAP[key]) MAP[key](val);
+    });
+    return s;
+}
+
+function generateTraceForBits(sequenceId, bitCount) {
+    const saved = activeLevel;
+    activeLevel = { bits: bitCount, id: 'temp', name: 'TEMP' };
+    const entry = SEQUENCES[sequenceId];
+    let notes;
+    if (entry && entry.type === 'sort') {
+        notes = entry.fn().filter(s => s.note >= 0).map(s => s.note);
+    } else if (entry && entry.fn) {
+        notes = entry.fn();
+    } else {
+        notes = Array.from({ length: bitCount }, (_, i) => i);
+    }
+    activeLevel = saved;
+    return notes;
+}
+
+function modValueFor(prop, settings, time) {
+    const base = settings[prop];
+    if (!settings.modEnabled) return base;
+    const rate = settings.modRate || 0.5;
+    const depth = (settings.modDepth || 0) / 100;
+    const phase = (MOD_PHASES[prop] || 0);
+    const sine = Math.sin(2 * Math.PI * rate * time + phase);
+    const [min, max] = MOD_RANGES[prop] || [0, 100];
+    if (prop === 'cutoffHz') {
+        const logBase = Math.log10(Math.max(200, base));
+        const logMin = Math.log10(200);
+        const logMax = Math.log10(20000);
+        const logRange = logMax - logMin;
+        return Math.pow(10, Math.max(logMin, Math.min(logMax, logBase + sine * depth * logRange * 0.3)));
+    }
+    const range = max - min;
+    return Math.max(min, Math.min(max, base + sine * depth * range * 0.3));
+}
+
+function renderNoteOffline(ctx, frequency, startTime, settings, modTime, durationOverrideSec) {
+    const dur = durationOverrideSec || (modValueFor('durationMs', settings, modTime) / 1000);
+    const vol = modValueFor('volume', settings, modTime) / 100;
+    const attackTime = Math.min(modValueFor('attackMs', settings, modTime) / 1000, dur * 0.4);
+    const releaseTime = Math.min(modValueFor('releaseMs', settings, modTime) / 1000, dur * 0.4);
+
+    const osc = ctx.createOscillator();
+    if (settings.waveform === 'pulse') {
+        osc.setPeriodicWave(createPulseWave(ctx, settings.dutyCycle));
+    } else {
+        osc.type = settings.waveform;
+    }
+    osc.frequency.value = frequency;
+
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    if (settings.filterEnabled) {
+        filter.frequency.value = modValueFor('cutoffHz', settings, modTime);
+        filter.Q.value = settings.resonance;
+    } else {
+        filter.frequency.value = 20000;
+        filter.Q.value = 0.1;
+    }
+
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, startTime);
+    gain.gain.linearRampToValueAtTime(vol, startTime + attackTime);
+    const sustainEnd = startTime + dur - releaseTime;
+    if (sustainEnd > startTime + attackTime) {
+        gain.gain.setValueAtTime(vol, sustainEnd);
+    }
+    gain.gain.linearRampToValueAtTime(0.0001, startTime + dur);
+
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(startTime);
+    osc.stop(startTime + dur + 0.02);
+}
+
+function encodeWav(audioBuffer) {
+    const sampleRate = audioBuffer.sampleRate;
+    const samples = audioBuffer.getChannelData(0);
+    const dataLength = samples.length * 2;
+    const buffer = new ArrayBuffer(44 + dataLength);
+    const view = new DataView(buffer);
+
+    function writeStr(offset, str) {
+        for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
+    }
+
+    writeStr(0, 'RIFF');
+    view.setUint32(4, 36 + dataLength, true);
+    writeStr(8, 'WAVE');
+    writeStr(12, 'fmt ');
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, 1, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * 2, true);
+    view.setUint16(32, 2, true);
+    view.setUint16(34, 16, true);
+    writeStr(36, 'data');
+    view.setUint32(40, dataLength, true);
+
+    let offset = 44;
+    for (let i = 0; i < samples.length; i++) {
+        const s = Math.max(-1, Math.min(1, samples[i]));
+        view.setInt16(offset, s * 0x7FFF, true);
+        offset += 2;
+    }
+
+    return new Blob([buffer], { type: 'audio/wav' });
+}
+
+async function renderSymphony(movementSettings) {
+    const statusEl = document.getElementById('symphony-status');
+    const sampleRate = 44100;
+    const pauseBetween = 1.5; // seconds between movements
+
+    // Plan all movements
+    const movements = [];
+    let totalTime = 0;
+
+    // Sort by bit count (Nibble first → High Color last)
+    const sorted = [...movementSettings].sort((a, b) => a.bits - b.bits);
+
+    for (const ms of sorted) {
+        const seqId = ms.sequence || 'quick';
+        const trace = generateTraceForBits(seqId, ms.bits);
+        const bpm = ms.tempoBpm || 120;
+        const spacing = 60 / bpm; // seconds per note
+
+        // Compute movement duration with rhythm-aware cumulative timing
+        let movementDur = 0.5; // release tail
+        for (let i = 0; i < trace.length; i++) {
+            movementDur += spacing * rhythmMultiplierForNoteWith(i, ms);
+        }
+
+        const levelName = LEVELS.find(l => l.bits === ms.bits)?.name || `${ms.bits}-BIT`;
+        movements.push({ settings: ms, trace, spacing, startTime: totalTime, name: levelName });
+        totalTime += movementDur + pauseBetween;
+    }
+
+    statusEl.textContent = `Rendering ${movements.length} movements (${Math.ceil(totalTime)}s)...`;
+
+    // Create offline context
+    const offlineCtx = new OfflineAudioContext(1, Math.ceil(totalTime * sampleRate), sampleRate);
+
+    // Schedule all notes with rhythm-aware cumulative timing
+    for (const mov of movements) {
+        const { settings, trace, spacing, startTime } = mov;
+        let noteOffset = 0;
+        trace.forEach((bitPos, i) => {
+            const rm = rhythmMultiplierForNoteWith(i, settings);
+            const noteTime = startTime + noteOffset;
+            const noteDur = modValueFor('durationMs', settings, noteTime) / 1000 * rm;
+            renderNoteOffline(offlineCtx, bitToFreq(bitPos), noteTime, settings, noteTime, noteDur);
+            noteOffset += spacing * rm;
+        });
+    }
+
+    // Render
+    statusEl.textContent = 'Rendering audio...';
+    const audioBuffer = await offlineCtx.startRendering();
+
+    // Encode WAV
+    statusEl.textContent = 'Encoding WAV...';
+    const wavBlob = encodeWav(audioBuffer);
+
+    // Download (direct download — showSaveFilePicker doesn't work from async chains)
+    const url = URL.createObjectURL(wavBlob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'chiptune-symphony.wav';
+    a.click();
+    URL.revokeObjectURL(url);
+    statusEl.textContent = `Exported ${movements.length} movements (${Math.ceil(totalTime)}s)`;
+}
+
+// ── UI ↔ State Sync ─────────────────────────────────────────
+
+function renderRhythmBeats() {
+    const container = document.getElementById('rhythm-beats');
+    while (container.firstChild) container.removeChild(container.firstChild);
+    const pattern = state.rhythmPattern || [1, 1, 2, 1];
+    pattern.forEach((val, i) => {
+        const btn = document.createElement('button');
+        btn.className = 'rhythm-beat' + (val > 1 ? ' long' : '') +
+            (i > 0 && i % 4 === 0 ? ' measure-start' : '');
+        btn.textContent = val > 1 ? 'Daa' : 'Da';
+        btn.addEventListener('click', () => {
+            state.rhythmPattern[i] = state.rhythmPattern[i] > 1 ? 1 : 2;
+            activePreset = detectPreset();
+            stateToUI();
+            saveToStorage();
+        });
+        container.appendChild(btn);
+    });
+}
+
+function updateRhythmLabel() {
+    const pattern = state.rhythmPattern || [1, 1, 2, 1];
+    const measures = [];
+    for (let i = 0; i < pattern.length; i += 4) {
+        const measure = pattern.slice(i, i + 4)
+            .map(v => v > 1 ? 'Daa' : 'Da').join(' ');
+        measures.push(measure);
+    }
+    document.getElementById('rhythm-label').textContent = '| ' + measures.join(' | ') + ' |';
+}
+
+function stateToUI() {
+    // Waveform buttons
+    document.querySelectorAll('.wave-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.wave === state.waveform);
+    });
+
+    // Duty cycle
+    const dcSlider = document.getElementById('duty-cycle');
+    dcSlider.value = state.dutyCycle;
+    dcSlider.disabled = state.waveform !== 'pulse';
+    document.getElementById('duty-cycle-value').textContent = state.dutyCycle + '%';
+    document.getElementById('duty-cycle-row').style.opacity =
+        state.waveform === 'pulse' ? '1' : '0.3';
+
+    // Envelope
+    document.getElementById('attack').value = state.attackMs;
+    document.getElementById('attack-value').textContent = state.attackMs + ' ms';
+    document.getElementById('release').value = state.releaseMs;
+    document.getElementById('release-value').textContent = state.releaseMs + ' ms';
+
+    // Volume, duration, tempo
+    document.getElementById('volume').value = state.volume;
+    document.getElementById('volume-value').textContent = state.volume + '%';
+    document.getElementById('duration').value = state.durationMs;
+    document.getElementById('duration-value').textContent = state.durationMs + ' ms';
+    document.getElementById('tempo').value = state.tempoBpm || 120;
+    document.getElementById('tempo-value').textContent = (state.tempoBpm || 120) + ' bpm';
+
+    // Modulation
+    document.getElementById('mod-enabled').checked = state.modEnabled || false;
+    document.getElementById('mod-rate').value = Math.round((state.modRate || 0.5) * 10);
+    document.getElementById('mod-rate-value').textContent = (state.modRate || 0.5).toFixed(1) + ' Hz';
+    document.getElementById('mod-depth').value = state.modDepth || 50;
+    document.getElementById('mod-depth-value').textContent = (state.modDepth || 50) + '%';
+    const modSliders = document.querySelectorAll('#mod-rate, #mod-depth');
+    modSliders.forEach(s => { s.disabled = !state.modEnabled; });
+
+    // Filter
+    document.getElementById('filter-enabled').checked = state.filterEnabled;
+    const cutoffSlider = document.getElementById('cutoff');
+    cutoffSlider.value = freqToSlider(state.cutoffHz);
+    cutoffSlider.disabled = !state.filterEnabled;
+    document.getElementById('cutoff-value').textContent = Math.round(state.cutoffHz) + ' Hz';
+    const resSlider = document.getElementById('resonance');
+    resSlider.value = qToSlider(state.resonance);
+    resSlider.disabled = !state.filterEnabled;
+    document.getElementById('resonance-value').textContent = state.resonance.toFixed(1);
+
+    // Presets
+    document.querySelectorAll('.preset-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.preset === activePreset);
+    });
+
+    // Rhythm
+    document.getElementById('rhythm-enabled').checked = state.rhythmEnabled || false;
+    const rmSlider = document.getElementById('rhythm-multiplier');
+    rmSlider.value = Math.round((state.rhythmMultiplier || 2) * 10);
+    rmSlider.disabled = !state.rhythmEnabled;
+    document.getElementById('rhythm-multiplier-value').textContent =
+        (state.rhythmMultiplier || 2).toFixed(1) + '\u00d7';
+    renderRhythmBeats();
+    updateRhythmLabel();
+
+    // Canvases & export
+    drawWaveform();
+    drawEnvelope();
+    updateSequenceHighlight();
+    updateExport();
+}
+
+function uiToState() {
+    state.dutyCycle = parseInt(document.getElementById('duty-cycle').value);
+    state.attackMs = parseInt(document.getElementById('attack').value);
+    state.releaseMs = parseInt(document.getElementById('release').value);
+    state.volume = parseInt(document.getElementById('volume').value);
+    state.durationMs = parseInt(document.getElementById('duration').value);
+    state.tempoBpm = parseInt(document.getElementById('tempo').value);
+    state.modEnabled = document.getElementById('mod-enabled').checked;
+    state.modRate = parseInt(document.getElementById('mod-rate').value) / 10;
+    state.modDepth = parseInt(document.getElementById('mod-depth').value);
+    state.filterEnabled = document.getElementById('filter-enabled').checked;
+    state.cutoffHz = sliderToFreq(parseInt(document.getElementById('cutoff').value));
+    state.resonance = sliderToQ(parseInt(document.getElementById('resonance').value));
+    state.rhythmEnabled = document.getElementById('rhythm-enabled').checked;
+    state.rhythmMultiplier = parseInt(document.getElementById('rhythm-multiplier').value) / 10;
+}
+
+function handleSliderInput() {
+    uiToState();
+    activePreset = detectPreset();
+    stateToUI();
+    saveToStorage();
+}
+
+function detectPreset() {
+    for (const [key, preset] of Object.entries(PRESETS)) {
+        if (state.waveform === preset.waveform &&
+            state.dutyCycle === preset.dutyCycle &&
+            state.attackMs === preset.attackMs &&
+            state.releaseMs === preset.releaseMs &&
+            state.volume === preset.volume &&
+            state.durationMs === preset.durationMs &&
+            (state.tempoBpm || 120) === (preset.tempoBpm || 120) &&
+            state.filterEnabled === preset.filterEnabled &&
+            Math.abs(state.cutoffHz - preset.cutoffHz) < 50 &&
+            Math.abs(state.resonance - preset.resonance) < 0.2 &&
+            (state.rhythmEnabled || false) === (preset.rhythmEnabled || false)) {
+            return key;
+        }
+    }
+    return null;
+}
+
+// ── LocalStorage ────────────────────────────────────────────
+
+function saveToStorage() {
+    try {
+        localStorage.setItem('chiptunePlayground', JSON.stringify({
+            state, activePreset, activeLevelId: activeLevel.id, activeSequence, exportTab
+        }));
+    } catch (e) { /* quota exceeded — ignore */ }
+}
+
+function loadFromStorage() {
+    try {
+        const saved = JSON.parse(localStorage.getItem('chiptunePlayground'));
+        if (saved && saved.state) {
+            Object.assign(state, saved.state);
+            activePreset = saved.activePreset || detectPreset();
+            activeLevel = LEVELS.find(l => l.id === saved.activeLevelId) || LEVELS[6];
+            activeSequence = saved.activeSequence || 'sweep-up';
+            exportTab = saved.exportTab || 'settings';
+        }
+    } catch (e) { /* corrupt — ignore */ }
+}
+
+// ── Build UI ────────────────────────────────────────────────
+
+function buildPresets() {
+    const list = document.getElementById('preset-list');
+    list.innerHTML = '';
+    for (const [key, preset] of Object.entries(PRESETS)) {
+        const btn = document.createElement('button');
+        btn.className = 'preset-btn';
+        btn.dataset.preset = key;
+        btn.innerHTML = `<span class="preset-name">${preset.name}</span>` +
+                         `<span class="preset-desc">${preset.desc}</span>`;
+        btn.addEventListener('click', () => {
+            state = { ...preset };
+            activePreset = key;
+            stateToUI();
+            saveToStorage();
+        });
+        list.appendChild(btn);
+    }
+}
+
+function buildLevelSelector() {
+    const container = document.getElementById('level-selector');
+    container.innerHTML = '';
+    LEVELS.forEach(level => {
+        const btn = document.createElement('button');
+        btn.className = 'level-btn';
+        if (level.id === activeLevel.id) btn.classList.add('active');
+        btn.dataset.levelId = level.id;
+        btn.textContent = `${level.name} ${level.bits}`;
+        btn.addEventListener('click', () => {
+            activeLevel = level;
+            buildLevelSelector();
+            buildBitArray();
+            saveToStorage();
+        });
+        container.appendChild(btn);
+    });
+}
+
+function buildBitArray() {
+    const container = document.getElementById('bit-array');
+    container.innerHTML = '';
+    const activeBits = activeLevel.bits;
+
+    // Upper row: bits 15→8 (high byte)
+    const upperLabel = document.createElement('div');
+    upperLabel.className = 'bit-row-label';
+    upperLabel.textContent = 'HIGH BYTE (15→8)';
+    container.appendChild(upperLabel);
+
+    const upperRow = document.createElement('div');
+    upperRow.className = 'bit-row';
+    for (let pos = 15; pos >= 8; pos--) {
+        upperRow.appendChild(createBitCell(pos, pos < activeBits));
+    }
+    container.appendChild(upperRow);
+
+    // Lower row: bits 7→0 (low byte)
+    const lowerLabel = document.createElement('div');
+    lowerLabel.className = 'bit-row-label';
+    lowerLabel.textContent = 'LOW BYTE (7→0)';
+    container.appendChild(lowerLabel);
+
+    const lowerRow = document.createElement('div');
+    lowerRow.className = 'bit-row';
+    for (let pos = 7; pos >= 0; pos--) {
+        lowerRow.appendChild(createBitCell(pos, pos < activeBits));
+    }
+    container.appendChild(lowerRow);
+}
+
+function createBitCell(position, isActive) {
+    const note = bitToNote(position);
+    const placeValue = Math.pow(2, position);
+
+    const cell = document.createElement('button');
+    cell.className = 'bit-cell';
+    if (!isActive) cell.classList.add('inactive');
+    cell.dataset.pos = position;
+    cell.dataset.note = note;
+
+    const posEl = document.createElement('span');
+    posEl.className = 'bit-pos';
+    posEl.textContent = position;
+
+    const noteEl = document.createElement('span');
+    noteEl.className = 'bit-note';
+    noteEl.textContent = isActive ? note : '---';
+
+    const valEl = document.createElement('span');
+    valEl.className = 'bit-val';
+    valEl.textContent = isActive ? placeValue.toLocaleString() : '---';
+
+    cell.appendChild(posEl);
+    cell.appendChild(noteEl);
+    cell.appendChild(valEl);
+
+    if (isActive) {
+        cell.addEventListener('click', () => {
+            playNote(bitToFreq(position));
+            highlightBitCell(position);
+        });
+    } else {
+        cell.style.cursor = 'default';
+    }
+
+    return cell;
+}
+
+function bindEvents() {
+    // Waveform selector
+    document.querySelectorAll('.wave-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            state.waveform = btn.dataset.wave;
+            activePreset = detectPreset();
+            stateToUI();
+            saveToStorage();
+        });
+    });
+
+    // All sliders
+    ['duty-cycle', 'attack', 'release', 'volume', 'duration', 'tempo', 'mod-rate', 'mod-depth', 'cutoff', 'resonance', 'rhythm-multiplier']
+        .forEach(id => {
+            document.getElementById(id).addEventListener('input', handleSliderInput);
+        });
+
+    // Modulation toggle
+    document.getElementById('mod-enabled').addEventListener('change', handleSliderInput);
+
+    // Filter toggle
+    document.getElementById('filter-enabled').addEventListener('change', handleSliderInput);
+
+    // Rhythm toggle
+    document.getElementById('rhythm-enabled').addEventListener('change', handleSliderInput);
+
+    // Rhythm add/remove measure
+    document.getElementById('rhythm-add-measure').addEventListener('click', () => {
+        if (!state.rhythmPattern) state.rhythmPattern = [1, 1, 2, 1];
+        if (state.rhythmPattern.length < 16) {
+            state.rhythmPattern.push(1, 1, 1, 1);
+            activePreset = detectPreset();
+            stateToUI();
+            saveToStorage();
+        }
+    });
+    document.getElementById('rhythm-remove-measure').addEventListener('click', () => {
+        if (state.rhythmPattern && state.rhythmPattern.length > 4) {
+            state.rhythmPattern.splice(-4);
+            activePreset = detectPreset();
+            stateToUI();
+            saveToStorage();
+        }
+    });
+
+    // Audition
+    document.getElementById('audition-btn').addEventListener('click', () => {
+        playNote(440); // A4
+    });
+
+    // Sequences — unified dispatcher
+    document.querySelectorAll('[data-seq]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const seqId = btn.dataset.seq;
+            const entry = SEQUENCES[seqId];
+            if (!entry) return;
+            activeSequence = seqId;
+            updateSequenceHighlight();
+            saveToStorage();
+            if (entry.type === 'melody') {
+                playSequence(ODE_TO_JOY);
+            } else if (entry.type === 'sort') {
+                playSortAnimation(entry.fn());
+            } else {
+                playBitTrace(entry.fn());
+            }
+        });
+    });
+    document.getElementById('stop-melody').addEventListener('click', stopMelody);
+
+    // Export tabs
+    document.querySelectorAll('.export-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            exportTab = tab.dataset.tab;
+            document.querySelectorAll('.export-tab').forEach(t =>
+                t.classList.toggle('active', t.dataset.tab === exportTab));
+            updateExport();
+            saveToStorage();
+        });
+    });
+
+    // Copy
+    document.getElementById('copy-export').addEventListener('click', async () => {
+        const text = exportTab === 'settings' ? getExportSettings() : getExportSwift();
+        try {
+            await navigator.clipboard.writeText(text);
+            const btn = document.getElementById('copy-export');
+            btn.textContent = 'Copied!';
+            btn.classList.add('copied');
+            setTimeout(() => {
+                btn.textContent = 'Copy to Clipboard';
+                btn.classList.remove('copied');
+            }, 2000);
+        } catch (e) {
+            console.error('Copy failed:', e);
+        }
+    });
+
+    // Save to file (native picker with name/location control)
+    document.getElementById('save-export').addEventListener('click', async () => {
+        const text = exportTab === 'settings' ? getExportSettings() : getExportSwift();
+        const ext = exportTab === 'settings' ? 'txt' : 'swift';
+        const levelName = activeLevel.name.toLowerCase().replace(/\s+/g, '-');
+        const defaultName = `${levelName}-tone.${ext}`;
+
+        if (window.showSaveFilePicker) {
+            try {
+                const handle = await window.showSaveFilePicker({
+                    suggestedName: defaultName,
+                    types: [{
+                        description: ext === 'txt' ? 'Tone Settings' : 'Swift Source',
+                        accept: { 'text/plain': [`.${ext}`] }
+                    }]
+                });
+                const writable = await handle.createWritable();
+                await writable.write(text);
+                await writable.close();
+            } catch (e) {
+                if (e.name !== 'AbortError') console.error('Save failed:', e);
+            }
+        } else {
+            // Fallback for Safari
+            const blob = new Blob([text], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = defaultName;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+    });
+
+    // Load from file
+    const fileInput = document.getElementById('file-input');
+    document.getElementById('load-export').addEventListener('click', () => {
+        fileInput.click();
+    });
+    fileInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+            importSettings(evt.target.result);
+            fileInput.value = ''; // reset so same file can be loaded again
+        };
+        reader.readAsText(file);
+    });
+
+    // Symphony export
+    const symphonyFiles = document.getElementById('symphony-files');
+    document.getElementById('export-symphony').addEventListener('click', () => {
+        symphonyFiles.click();
+    });
+    symphonyFiles.addEventListener('change', async (e) => {
+        const files = Array.from(e.target.files);
+        if (files.length === 0) return;
+        const statusEl = document.getElementById('symphony-status');
+        statusEl.textContent = `Loading ${files.length} files...`;
+
+        const settings = [];
+        for (const file of files) {
+            const text = await file.text();
+            const parsed = parseSettingsText(text);
+            if (parsed.bits) {
+                settings.push(parsed);
+            } else {
+                statusEl.textContent = `Skipped ${file.name} (no Level: line)`;
+            }
+        }
+
+        if (settings.length === 0) {
+            statusEl.textContent = 'No valid settings files found';
+            return;
+        }
+
+        statusEl.textContent = `Loaded ${settings.length} movements, rendering...`;
+        symphonyFiles.value = '';
+
+        try {
+            await renderSymphony(settings);
+        } catch (err) {
+            statusEl.textContent = 'Render failed: ' + err.message;
+            console.error(err);
+        }
+    });
+
+    // Clear settings
+    document.getElementById('clear-settings').addEventListener('click', () => {
+        if (confirm('Clear all saved settings and reset to Classic?')) {
+            localStorage.removeItem('chiptunePlayground');
+            state = { ...PRESETS.classic };
+            activePreset = 'classic';
+            activeLevel = LEVELS[6];
+            activeSequence = 'sweep-up';
+            exportTab = 'settings';
+            buildLevelSelector();
+            buildBitArray();
+            stateToUI();
+            document.querySelectorAll('.export-tab').forEach(t =>
+                t.classList.toggle('active', t.dataset.tab === 'settings'));
+        }
+    });
+}
+
+// ── Init ────────────────────────────────────────────────────
+
+function init() {
+    loadFromStorage();
+    buildPresets();
+    buildLevelSelector();
+    buildBitArray();
+    bindEvents();
+    stateToUI();
+}
+
+init();
+</script>
+
+</body>
+</html>

@@ -210,6 +210,17 @@ On iOS, ChiptuneKit configures the audio session for `.ambient` category with `.
 - Call `start()` once when your view appears, not on every sound
 - Call `stop()` when audio is no longer needed to free resources
 
+## Examples
+
+The [`Examples/chiptune-playground/`](Examples/chiptune-playground/) directory holds reference material from ChiptuneKit's development:
+
+- **`*-tone.txt`** — Sample `ToneSettings` configurations.
+- **`index.html`** — A standalone HTML page for previewing tones in the browser.
+- **`chiptune-symphony.wav`** — A ~4.5 MB rendered example of the configured tones.
+- **`RHYTHM-INTEGRATION-GUIDE.md`** — Notes on wiring `RhythmSettings` into a host app, written from the perspective of BQ16 (ChiptuneKit's first consumer).
+
+These files are not built or installed by SPM — they're reference material only.
+
 ## License
 
 MIT License - see LICENSE file for details.
