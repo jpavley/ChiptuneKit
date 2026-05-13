@@ -6,5 +6,6 @@ DerivedData/
 .swiftpm/
 *.xcodeproj/**/xcuserdata/
 
-# Playground tone exports (host-app dev artifacts)
+# Playground tone exports — block stray dev artifacts, allow curated Examples/
 *-tone.txt
+!Examples/**/*-tone.txt
